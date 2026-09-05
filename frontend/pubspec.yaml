@@ -1,0 +1,44 @@
+name: student_saas
+description: Student & Coaching Institute Management SaaS - Flutter client
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Routing
+  go_router: ^14.2.0
+
+  # Networking
+  dio: ^5.5.0
+
+  # Secure storage (for future auth tokens)
+  flutter_secure_storage: ^9.2.2
+
+  # Date formatting (student/teacher profile screens)
+  intl: ^0.19.0
+
+  # QR code generation (student profile) and scanning (teacher attendance)
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
+
+  # Receipt PDF generation + print/share (Phase 5)
+  pdf: ^3.11.1
+  printing: ^5.13.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
