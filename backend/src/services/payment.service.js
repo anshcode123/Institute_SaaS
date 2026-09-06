@@ -150,11 +150,7 @@ async function getPaymentById(instituteId, id) {
     include: {
       student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
       studentFee: {
-        include: {
-          feeStructure: {
-            select: { id: true, name: true, currency: true, feeType: true, coursePaymentMode: true },
-          },
-        },
+        include: { feeStructure: { select: { id: true, name: true, currency: true } } },
       },
       installment: true,
       receivedBy: { select: { id: true, name: true, role: true } },
@@ -170,11 +166,7 @@ async function getReceiptById(instituteId, id) {
         include: {
           student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
           studentFee: {
-            include: {
-              feeStructure: {
-                select: { id: true, name: true, currency: true, feeType: true, coursePaymentMode: true },
-              },
-            },
+            include: { feeStructure: { select: { id: true, name: true, currency: true } } },
           },
           installment: true,
           receivedBy: { select: { id: true, name: true, role: true } },

@@ -44,9 +44,7 @@ class FeeStructuresListScreen extends ConsumerWidget {
                         onTap: () => context.push('/fees/structures/${structure.id}'),
                         title: Text(structure.name),
                         subtitle: Text(
-                          '${structure.feeType} • '
-                          '${formatCurrency(structure.totalAmount, currency: structure.currency)}'
-                          '${structure.coursePaymentMode != null ? ' • ${structure.coursePaymentMode}' : ''} • '
+                          '${formatCurrency(structure.totalAmount, currency: structure.currency)} • '
                           '${structure.installments.length} installments'
                           '${structure.batchName != null ? ' • ${structure.batchName}' : ''}',
                         ),

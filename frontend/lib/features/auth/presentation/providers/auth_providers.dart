@@ -4,23 +4,20 @@ import '../../data/auth_repository_impl.dart';
 import '../../domain/auth_repository.dart';
 import 'auth_state.dart';
 
-final Provider<AuthRepository> authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl(
-    onSessionExpired: () async => ref.read(authControllerProvider.notifier).forceLogout(),
-  );
-});
-
-final StateNotifierProvider<AuthController, AuthState> authControllerProvider =
+final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(ref.watch(authRepositoryProvider));
+  return AuthController();
 });
 
 class AuthController extends StateNotifier<AuthState> {
-  AuthController(this._repository) : super(const AuthState.initial()) {
+  AuthController([AuthRepository? repository])
+      : super(const AuthState.initial()) {
+    _repository = repository ??
+        AuthRepositoryImpl(onSessionExpired: () async => forceLogout());
     _restore();
   }
 
-  final AuthRepository _repository;
+  late final AuthRepository _repository;
 
   Future<void> _restore() async {
     state = const AuthState.loading();
@@ -30,17 +27,20 @@ class AuthController extends StateNotifier<AuthState> {
         : const AuthState.unauthenticated();
   }
 
-  Future<void> loginSuperAdmin({required String email, required String password}) async {
+  Future<void> loginSuperAdmin(
+      {required String email, required String password}) async {
     state = const AuthState.loading();
     try {
-      final session = await _repository.loginSuperAdmin(email: email, password: password);
+      final session =
+          await _repository.loginSuperAdmin(email: email, password: password);
       state = AuthState.authenticated(session.user);
     } catch (e) {
       state = AuthState.error(_messageOf(e));
     }
   }
 
-  Future<void> loginInstitute({required String instituteCode, required String password}) async {
+  Future<void> loginInstitute(
+      {required String instituteCode, required String password}) async {
     state = const AuthState.loading();
     try {
       final session = await _repository.loginInstitute(
@@ -53,10 +53,12 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> loginTeacher({required String email, required String password}) async {
+  Future<void> loginTeacher(
+      {required String email, required String password}) async {
     state = const AuthState.loading();
     try {
-      final session = await _repository.loginTeacher(email: email, password: password);
+      final session =
+          await _repository.loginTeacher(email: email, password: password);
       state = AuthState.authenticated(session.user);
     } catch (e) {
       state = AuthState.error(_messageOf(e));

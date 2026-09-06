@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/auth_providers.dart';
 import '../../../../shared/widgets/theme_toggle.dart';
+import '../providers/auth_providers.dart';
 
 /// Still intentionally minimal - a launcher into the Phase 3 modules
 /// rather than a real dashboard, which is a later phase.
@@ -30,7 +30,9 @@ class HomeScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            user == null ? 'Authenticated' : 'Signed in as ${user.name}\nRole: ${user.role}',
+            user == null
+                ? 'Authenticated'
+                : 'Signed in as ${user.name}\nRole: ${user.role}',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -39,9 +41,18 @@ class HomeScreen extends ConsumerWidget {
           // their own assigned batches, so those cards are hidden rather
           // than shown and rejected with a 403 on tap.
           if (!isTeacher) ...[
-            _NavCard(icon: Icons.school_outlined, label: 'Students', onTap: () => context.push('/students')),
-            _NavCard(icon: Icons.people_outline, label: 'Parents', onTap: () => context.push('/parents')),
-            _NavCard(icon: Icons.person_outline, label: 'Teachers', onTap: () => context.push('/teachers')),
+            _NavCard(
+                icon: Icons.school_outlined,
+                label: 'Students',
+                onTap: () => context.push('/students')),
+            _NavCard(
+                icon: Icons.people_outline,
+                label: 'Parents',
+                onTap: () => context.push('/parents')),
+            _NavCard(
+                icon: Icons.person_outline,
+                label: 'Teachers',
+                onTap: () => context.push('/teachers')),
           ],
           _NavCard(
             icon: Icons.groups_outlined,
@@ -74,7 +85,8 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _NavCard extends StatelessWidget {
-  const _NavCard({required this.icon, required this.label, required this.onTap});
+  const _NavCard(
+      {required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;

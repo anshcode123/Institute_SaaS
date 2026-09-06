@@ -10,13 +10,15 @@ import '../providers/fee_providers.dart';
 const _paymentMethods = ['CASH', 'UPI', 'BANK_TRANSFER', 'CARD', 'OTHER'];
 
 class RecordPaymentScreen extends ConsumerStatefulWidget {
-  const RecordPaymentScreen({super.key, required this.studentFeeId, required this.installmentId});
+  const RecordPaymentScreen(
+      {super.key, required this.studentFeeId, required this.installmentId});
 
   final String studentFeeId;
   final String installmentId;
 
   @override
-  ConsumerState<RecordPaymentScreen> createState() => _RecordPaymentScreenState();
+  ConsumerState<RecordPaymentScreen> createState() =>
+      _RecordPaymentScreenState();
 }
 
 class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
@@ -56,7 +58,8 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
     });
 
     try {
-      final fee = ref.read(studentFeeDetailProvider(widget.studentFeeId)).value!;
+      final fee =
+          ref.read(studentFeeDetailProvider(widget.studentFeeId)).value!;
       final payment = await ref.read(feeRepositoryProvider).recordPayment(
             studentId: fee.studentId,
             studentFeeId: widget.studentFeeId,
@@ -75,7 +78,8 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
         context.pop();
       }
     } catch (e) {
-      setState(() => _errorMessage = e is AppException ? e.message : 'Failed to record payment');
+      setState(() => _errorMessage =
+          e is AppException ? e.message : 'Failed to record payment');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -91,10 +95,12 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => ErrorState(
           message: 'Failed to load fee details',
-          onRetry: () => ref.invalidate(studentFeeDetailProvider(widget.studentFeeId)),
+          onRetry: () =>
+              ref.invalidate(studentFeeDetailProvider(widget.studentFeeId)),
         ),
         data: (fee) {
-          final installment = fee.installments.firstWhere((i) => i.id == widget.installmentId);
+          final installment =
+              fee.installments.firstWhere((i) => i.id == widget.installmentId);
           if (!_prefilled) {
             _amountController.text = installment.remaining.toStringAsFixed(2);
             _prefilled = true;
@@ -124,23 +130,33 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _amountController,
-                  decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ ', border: OutlineInputBorder()),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Amount',
+                      prefixText: '₹ ',
+                      border: OutlineInputBorder()),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   validator: (v) {
                     final n = double.tryParse(v ?? '');
                     if (n == null || n <= 0) return 'Enter a valid amount';
-                    if (n > installment.remaining + 0.01) return 'Cannot exceed remaining amount';
+                    if (n > installment.remaining + 0.01) {
+                      return 'Cannot exceed remaining amount';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _paymentMethod,
-                  decoration: const InputDecoration(labelText: 'Payment Method', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'Payment Method',
+                      border: OutlineInputBorder()),
                   items: _paymentMethods
-                      .map((m) => DropdownMenuItem(value: m, child: Text(m.replaceAll('_', ' '))))
+                      .map((m) => DropdownMenuItem(
+                          value: m, child: Text(m.replaceAll('_', ' '))))
                       .toList(),
-                  onChanged: (v) => setState(() => _paymentMethod = v ?? 'CASH'),
+                  onChanged: (v) =>
+                      setState(() => _paymentMethod = v ?? 'CASH'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -160,18 +176,25 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                 ),
                 TextFormField(
                   controller: _notesController,
-                  decoration: const InputDecoration(labelText: 'Notes (optional)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'Notes (optional)',
+                      border: OutlineInputBorder()),
                   maxLines: 2,
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 12),
-                  Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  Text(_errorMessage!,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error)),
                 ],
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _isSaving ? null : _submit,
                   child: _isSaving
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
                       : const Text('Record Payment'),
                 ),
               ],

@@ -27,7 +27,8 @@ class _LinkParentScreenState extends ConsumerState<LinkParentScreen> {
   Future<void> _search(String query) async {
     setState(() => _loading = true);
     try {
-      final result = await ref.read(parentRepositoryProvider).list(query: query);
+      final result =
+          await ref.read(parentRepositoryProvider).list(query: query);
       setState(() {
         _results = result.items;
         _error = null;
@@ -47,7 +48,8 @@ class _LinkParentScreenState extends ConsumerState<LinkParentScreen> {
       ref.invalidate(studentDetailProvider(widget.studentId));
       if (mounted) context.pop();
     } catch (e) {
-      setState(() => _error = e is AppException ? e.message : 'Failed to link parent');
+      setState(() =>
+          _error = e is AppException ? e.message : 'Failed to link parent');
     }
   }
 
@@ -79,18 +81,23 @@ class _LinkParentScreenState extends ConsumerState<LinkParentScreen> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: _relationship,
-                  decoration: const InputDecoration(labelText: 'Relationship', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'Relationship', border: OutlineInputBorder()),
                   items: const [
                     DropdownMenuItem(value: 'FATHER', child: Text('Father')),
                     DropdownMenuItem(value: 'MOTHER', child: Text('Mother')),
-                    DropdownMenuItem(value: 'GUARDIAN', child: Text('Guardian')),
+                    DropdownMenuItem(
+                        value: 'GUARDIAN', child: Text('Guardian')),
                     DropdownMenuItem(value: 'OTHER', child: Text('Other')),
                   ],
-                  onChanged: (v) => setState(() => _relationship = v ?? 'GUARDIAN'),
+                  onChanged: (v) =>
+                      setState(() => _relationship = v ?? 'GUARDIAN'),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
-                  Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  Text(_error!,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error)),
                 ],
               ],
             ),

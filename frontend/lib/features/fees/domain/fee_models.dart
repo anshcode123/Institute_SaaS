@@ -30,19 +30,6 @@ class FeeStructureInstallmentTemplate {
       };
 }
 
-String _normalizeFeeType(String? value) {
-  switch (value) {
-    case 'MONTHLY':
-    case 'MONTHLY_FEE':
-      return 'MONTHLY_FEE';
-    case 'COURSE':
-    case 'COURSE_FEE':
-      return 'COURSE_FEE';
-    default:
-      return value ?? 'MONTHLY_FEE';
-  }
-}
-
 class FeeStructure {
   final String id;
   final String name;
@@ -52,9 +39,13 @@ class FeeStructure {
   final String status;
   final String feeType;
   final String? coursePaymentMode;
+  final int? monthlyDueDay;
+  final double lateFee;
+  final int? gracePeriodDays;
   final String? batchId;
   final String? batchName;
   final List<FeeStructureInstallmentTemplate> installments;
+  final List<MonthlyFeeGroup> monthlyGroups;
 
   const FeeStructure({
     required this.id,
@@ -62,12 +53,16 @@ class FeeStructure {
     required this.totalAmount,
     required this.currency,
     required this.status,
-    this.feeType = 'MONTHLY_FEE',
+    required this.feeType,
     this.coursePaymentMode,
+    this.monthlyDueDay,
+    this.lateFee = 0,
+    this.gracePeriodDays,
     this.description,
     this.batchId,
     this.batchName,
     this.installments = const [],
+    this.monthlyGroups = const [],
   });
 
   factory FeeStructure.fromJson(Map<String, dynamic> json) => FeeStructure(
@@ -77,16 +72,89 @@ class FeeStructure {
         totalAmount: num.parse(json['totalAmount'].toString()).toDouble(),
         currency: json['currency'] as String? ?? 'INR',
         status: json['status'] as String,
-        feeType: _normalizeFeeType(json['feeType'] as String?),
+        feeType: json['feeType'] as String? ?? 'MONTHLY',
         coursePaymentMode: json['coursePaymentMode'] as String?,
+        monthlyDueDay: json['monthlyDueDay'] as int?,
+        lateFee: num.parse(json['lateFee']?.toString() ?? '0').toDouble(),
+        gracePeriodDays: json['gracePeriodDays'] as int?,
         batchId: json['batchId'] as String?,
-        batchName: json['batch'] != null ? (json['batch']['name'] as String?) : null,
+        batchName:
+            json['batch'] != null ? (json['batch']['name'] as String?) : null,
         installments: json['installments'] != null
             ? (json['installments'] as List)
-                .map((e) => FeeStructureInstallmentTemplate.fromJson(e as Map<String, dynamic>))
+                .map((e) => FeeStructureInstallmentTemplate.fromJson(
+                    e as Map<String, dynamic>))
+                .toList()
+            : const [],
+        monthlyGroups: json['monthlyGroups'] != null
+            ? (json['monthlyGroups'] as List)
+                .map((e) => MonthlyFeeGroup.fromJson(e as Map<String, dynamic>))
                 .toList()
             : const [],
       );
+}
+
+class MonthlyFeeGroupSubject {
+  final String subjectId;
+  final String? subjectName;
+  final double monthlyAmount;
+  const MonthlyFeeGroupSubject(
+      {required this.subjectId, required this.monthlyAmount, this.subjectName});
+  factory MonthlyFeeGroupSubject.fromJson(Map<String, dynamic> json) =>
+      MonthlyFeeGroupSubject(
+        subjectId: json['subjectId'] as String,
+        subjectName:
+            (json['subject'] as Map<String, dynamic>?)?['name'] as String?,
+        monthlyAmount: num.parse(json['monthlyAmount'].toString()).toDouble(),
+      );
+  Map<String, dynamic> toJson() => {
+        'subjectId': subjectId,
+        'monthlyAmount': monthlyAmount.toStringAsFixed(2)
+      };
+}
+
+class MonthlyFeeGroup {
+  final String? id;
+  final String name;
+  final String applicableLevel;
+  final String pricingType;
+  final double? combinedAmount;
+  final List<MonthlyFeeGroupSubject> subjects;
+  const MonthlyFeeGroup(
+      {this.id,
+      required this.name,
+      required this.applicableLevel,
+      required this.pricingType,
+      this.combinedAmount,
+      this.subjects = const []});
+  double get monthlyTotal => pricingType == 'COMBINED'
+      ? combinedAmount ?? 0
+      : subjects.fold(0, (sum, subject) => sum + subject.monthlyAmount);
+  factory MonthlyFeeGroup.fromJson(Map<String, dynamic> json) =>
+      MonthlyFeeGroup(
+        id: json['id'] as String?,
+        name: json['name'] as String,
+        applicableLevel: json['applicableLevel'] as String,
+        pricingType: json['pricingType'] as String,
+        combinedAmount: json['combinedAmount'] == null
+            ? null
+            : num.parse(json['combinedAmount'].toString()).toDouble(),
+        subjects: json['subjectPrices'] == null
+            ? const []
+            : (json['subjectPrices'] as List)
+                .map((e) =>
+                    MonthlyFeeGroupSubject.fromJson(e as Map<String, dynamic>))
+                .toList(),
+      );
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'applicableLevel': applicableLevel,
+        'pricingType': pricingType,
+        if (pricingType == 'COMBINED')
+          'combinedAmount': combinedAmount?.toStringAsFixed(2),
+        if (pricingType == 'SUBJECT_WISE')
+          'subjects': subjects.map((subject) => subject.toJson()).toList()
+      };
 }
 
 class FeeInstallment {
@@ -133,7 +201,8 @@ class StudentFeeStudentSummary {
 
   String get fullName => '$firstName $lastName';
 
-  factory StudentFeeStudentSummary.fromJson(Map<String, dynamic> json) => StudentFeeStudentSummary(
+  factory StudentFeeStudentSummary.fromJson(Map<String, dynamic> json) =>
+      StudentFeeStudentSummary(
         id: json['id'] as String,
         firstName: json['firstName'] as String,
         lastName: json['lastName'] as String,
@@ -189,7 +258,8 @@ class StudentFee {
         discountAmount: num.parse(json['discountAmount'].toString()).toDouble(),
         finalAmount: num.parse(json['finalAmount'].toString()).toDouble(),
         paidAmount: num.parse(json['paidAmount'].toString()).toDouble(),
-        outstandingAmount: num.parse(json['outstandingAmount'].toString()).toDouble(),
+        outstandingAmount:
+            num.parse(json['outstandingAmount'].toString()).toDouble(),
         status: json['status'] as String,
         installments: json['installments'] != null
             ? (json['installments'] as List)
@@ -197,7 +267,8 @@ class StudentFee {
                 .toList()
             : const [],
         student: json['student'] != null
-            ? StudentFeeStudentSummary.fromJson(json['student'] as Map<String, dynamic>)
+            ? StudentFeeStudentSummary.fromJson(
+                json['student'] as Map<String, dynamic>)
             : null,
       );
 }
@@ -217,12 +288,14 @@ class StudentFeesSummary {
     required this.outstandingAmount,
   });
 
-  factory StudentFeesSummary.fromJson(Map<String, dynamic> json) => StudentFeesSummary(
+  factory StudentFeesSummary.fromJson(Map<String, dynamic> json) =>
+      StudentFeesSummary(
         totalAmount: num.parse(json['totalAmount'].toString()).toDouble(),
         discountAmount: num.parse(json['discountAmount'].toString()).toDouble(),
         finalAmount: num.parse(json['finalAmount'].toString()).toDouble(),
         paidAmount: num.parse(json['paidAmount'].toString()).toDouble(),
-        outstandingAmount: num.parse(json['outstandingAmount'].toString()).toDouble(),
+        outstandingAmount:
+            num.parse(json['outstandingAmount'].toString()).toDouble(),
       );
 }
 
@@ -232,9 +305,13 @@ class StudentFeesResult {
 
   const StudentFeesResult({required this.fees, required this.summary});
 
-  factory StudentFeesResult.fromJson(Map<String, dynamic> json) => StudentFeesResult(
-        fees: (json['fees'] as List).map((e) => StudentFee.fromJson(e as Map<String, dynamic>)).toList(),
-        summary: StudentFeesSummary.fromJson(json['summary'] as Map<String, dynamic>),
+  factory StudentFeesResult.fromJson(Map<String, dynamic> json) =>
+      StudentFeesResult(
+        fees: (json['fees'] as List)
+            .map((e) => StudentFee.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        summary: StudentFeesSummary.fromJson(
+            json['summary'] as Map<String, dynamic>),
       );
 }
 
@@ -276,13 +353,20 @@ class Payment {
         notes: json['notes'] as String?,
         status: json['status'] as String,
         student: json['student'] != null
-            ? StudentFeeStudentSummary.fromJson(json['student'] as Map<String, dynamic>)
+            ? StudentFeeStudentSummary.fromJson(
+                json['student'] as Map<String, dynamic>)
             : null,
-        receivedByName: json['receivedBy'] != null ? (json['receivedBy']['name'] as String?) : null,
-        receiptId: json['receipt'] != null ? (json['receipt']['id'] as String?) : null,
-        receiptNumber: json['receipt'] != null ? (json['receipt']['receiptNumber'] as String?) : null,
-        installmentNumber:
-            json['installment'] != null ? (json['installment']['installmentNumber'] as int?) : null,
+        receivedByName: json['receivedBy'] != null
+            ? (json['receivedBy']['name'] as String?)
+            : null,
+        receiptId:
+            json['receipt'] != null ? (json['receipt']['id'] as String?) : null,
+        receiptNumber: json['receipt'] != null
+            ? (json['receipt']['receiptNumber'] as String?)
+            : null,
+        installmentNumber: json['installment'] != null
+            ? (json['installment']['installmentNumber'] as int?)
+            : null,
       );
 }
 
@@ -338,8 +422,10 @@ class Receipt {
       id: json['id'] as String,
       receiptNumber: json['receiptNumber'] as String,
       issuedAt: DateTime.parse(json['issuedAt'] as String),
-      previousOutstanding: num.parse(json['previousOutstanding'].toString()).toDouble(),
-      remainingOutstanding: num.parse(json['remainingOutstanding'].toString()).toDouble(),
+      previousOutstanding:
+          num.parse(json['previousOutstanding'].toString()).toDouble(),
+      remainingOutstanding:
+          num.parse(json['remainingOutstanding'].toString()).toDouble(),
       instituteName: institute['name'] as String,
       instituteCode: institute['instituteCode'] as String,
       studentName: '${student['firstName']} ${student['lastName']}',
@@ -369,7 +455,8 @@ class FeeDashboardSummary {
     required this.overdue,
   });
 
-  factory FeeDashboardSummary.fromJson(Map<String, dynamic> json) => FeeDashboardSummary(
+  factory FeeDashboardSummary.fromJson(Map<String, dynamic> json) =>
+      FeeDashboardSummary(
         totalFees: num.parse(json['totalFees'].toString()).toDouble(),
         collected: num.parse(json['collected'].toString()).toDouble(),
         outstanding: num.parse(json['outstanding'].toString()).toDouble(),

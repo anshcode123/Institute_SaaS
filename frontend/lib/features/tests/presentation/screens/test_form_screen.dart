@@ -75,7 +75,8 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
     }
     final subjectIds = _subjectRows.map((r) => r.subjectId).toSet();
     if (subjectIds.length != _subjectRows.length) {
-      setState(() => _errorMessage = 'The same subject is selected more than once');
+      setState(
+          () => _errorMessage = 'The same subject is selected more than once');
       return;
     }
 
@@ -103,7 +104,8 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
       ref.read(testListControllerProvider.notifier).load();
       if (mounted) context.pop();
     } catch (e) {
-      setState(() => _errorMessage = e is AppException ? e.message : 'Failed to create test');
+      setState(() => _errorMessage =
+          e is AppException ? e.message : 'Failed to create test');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -122,21 +124,26 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Test Name', border: OutlineInputBorder()),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              decoration: const InputDecoration(
+                  labelText: 'Test Name', border: OutlineInputBorder()),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Description', border: OutlineInputBorder()),
               maxLines: 2,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _selectedBatchId,
-              decoration: const InputDecoration(labelText: 'Batch', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Batch', border: OutlineInputBorder()),
               items: asyncBatches.items
-                  .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
+                  .map(
+                      (b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
                   .toList(),
               onChanged: (value) => setState(() => _selectedBatchId = value),
             ),
@@ -144,24 +151,32 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Test Date'),
-              subtitle: Text(_testDate != null ? DateFormat.yMMMd().format(_testDate!) : 'Not set'),
+              subtitle: Text(_testDate != null
+                  ? DateFormat.yMMMd().format(_testDate!)
+                  : 'Not set'),
               trailing: const Icon(Icons.calendar_today),
               onTap: _pickDate,
             ),
             TextFormField(
               controller: _durationController,
-              decoration: const InputDecoration(labelText: 'Duration (minutes, optional)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Duration (minutes, optional)',
+                  border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _passingMarksController,
-              decoration: const InputDecoration(labelText: 'Overall Passing Marks', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Overall Passing Marks',
+                  border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               validator: (v) {
                 final n = int.tryParse(v ?? '');
                 if (n == null || n < 0) return 'Enter a valid number';
-                if (n > _totalMarks) return 'Cannot exceed total marks ($_totalMarks)';
+                if (n > _totalMarks) {
+                  return 'Cannot exceed total marks ($_totalMarks)';
+                }
                 return null;
               },
             ),
@@ -169,26 +184,33 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Subjects', style: Theme.of(context).textTheme.titleMedium),
+                Text('Subjects',
+                    style: Theme.of(context).textTheme.titleMedium),
                 TextButton.icon(
                   icon: const Icon(Icons.add),
                   label: const Text('Add'),
-                  onPressed: () => setState(() => _subjectRows.add(_SubjectRow())),
+                  onPressed: () =>
+                      setState(() => _subjectRows.add(_SubjectRow())),
                 ),
               ],
             ),
-            for (var i = 0; i < _subjectRows.length; i++) _buildSubjectRow(context, i),
+            for (var i = 0; i < _subjectRows.length; i++)
+              _buildSubjectRow(context, i),
             const SizedBox(height: 8),
             Text('Total Marks: $_totalMarks'),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
-              Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(_errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _isSaving ? null : _submit,
               child: _isSaving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Create Test'),
             ),
           ],
@@ -206,8 +228,12 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
         children: [
           TextFormField(
             initialValue: row.subjectId,
-            decoration: const InputDecoration(labelText: 'Subject ID', isDense: true, border: OutlineInputBorder()),
-            onChanged: (v) => row.subjectId = v.trim().isEmpty ? null : v.trim(),
+            decoration: const InputDecoration(
+                labelText: 'Subject ID',
+                isDense: true,
+                border: OutlineInputBorder()),
+            onChanged: (v) =>
+                row.subjectId = v.trim().isEmpty ? null : v.trim(),
           ),
           const SizedBox(height: 4),
           Row(
@@ -215,19 +241,23 @@ class _TestFormScreenState extends ConsumerState<TestFormScreen> {
               Expanded(
                 child: TextFormField(
                   controller: row.maxMarksController,
-                  decoration: const InputDecoration(labelText: 'Max Marks', isDense: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Max Marks', isDense: true),
                   keyboardType: TextInputType.number,
                   onChanged: (_) => setState(() {}),
-                  validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'Required' : null,
+                  validator: (v) =>
+                      (int.tryParse(v ?? '') ?? 0) <= 0 ? 'Required' : null,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextFormField(
                   controller: row.passingMarksController,
-                  decoration: const InputDecoration(labelText: 'Passing Marks', isDense: true),
+                  decoration: const InputDecoration(
+                      labelText: 'Passing Marks', isDense: true),
                   keyboardType: TextInputType.number,
-                  validator: (v) => int.tryParse(v ?? '') == null ? 'Required' : null,
+                  validator: (v) =>
+                      int.tryParse(v ?? '') == null ? 'Required' : null,
                 ),
               ),
               if (_subjectRows.length > 1)

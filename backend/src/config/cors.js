@@ -1,5 +1,5 @@
 // Widen this list as frontend origins (web/emulator) are added.
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:1808'];
+const allowedOrigins = ['http://localhost:1808', 'http://localhost:5173'];
 
 const corsOptions = {
   origin: (origin, callback) => {

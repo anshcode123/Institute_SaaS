@@ -17,21 +17,25 @@ Future<pw.Document> buildReceiptPdf(Receipt receipt) async {
       build: (context) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(receipt.instituteName, style: const pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text(receipt.instituteName,
+              style: const pw.TextStyle(
+                  fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.Text('Institute ID: ${receipt.instituteCode}'),
           pw.SizedBox(height: 12),
           pw.Divider(),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('Receipt No: ${receipt.receiptNumber}', style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text('Receipt No: ${receipt.receiptNumber}',
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.Text(dateFormat.format(receipt.paymentDate)),
             ],
           ),
           pw.Divider(),
           pw.SizedBox(height: 8),
           _kv('Student', '${receipt.studentName} (${receipt.studentCode})'),
-          if (receipt.parentName != null) _kv('Parent/Guardian', receipt.parentName!),
+          if (receipt.parentName != null)
+            _kv('Parent/Guardian', receipt.parentName!),
           _kv('Fee Structure', receipt.feeStructureName),
           _kv('Installment', '#${receipt.installmentNumber}'),
           pw.SizedBox(height: 8),
@@ -41,8 +45,10 @@ Future<pw.Document> buildReceiptPdf(Receipt receipt) async {
           if (receipt.transactionReference != null)
             _kv('Transaction Ref', receipt.transactionReference!),
           pw.Divider(),
-          _kv('Previous Outstanding', formatCurrency(receipt.previousOutstanding)),
-          _kv('Remaining Outstanding', formatCurrency(receipt.remainingOutstanding)),
+          _kv('Previous Outstanding',
+              formatCurrency(receipt.previousOutstanding)),
+          _kv('Remaining Outstanding',
+              formatCurrency(receipt.remainingOutstanding)),
           pw.Divider(),
           _kv('Received By', receipt.receivedByName),
           pw.SizedBox(height: 16),
@@ -65,7 +71,9 @@ pw.Widget _kv(String label, String value, {bool bold = false}) {
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(label),
-        pw.Text(value, style: pw.TextStyle(fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+        pw.Text(value,
+            style: pw.TextStyle(
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
       ],
     ),
   );

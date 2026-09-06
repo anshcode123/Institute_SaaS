@@ -44,33 +44,6 @@ const FEE_STRUCTURE_STATUS = Object.freeze({
   INACTIVE: 'INACTIVE',
 });
 
-const FEE_TYPE = Object.freeze({
-  MONTHLY_FEE: 'MONTHLY_FEE',
-  COURSE_FEE: 'COURSE_FEE',
-  // Backwards-compatible aliases used by older data/clients.
-  MONTHLY: 'MONTHLY_FEE',
-  COURSE: 'COURSE_FEE',
-});
-
-const COURSE_PAYMENT_MODE = Object.freeze({
-  FULL: 'FULL',
-  EMI: 'EMI',
-  FULL_PAYMENT: 'FULL',
-  EMI_PAYMENT: 'EMI',
-});
-
-function normalizeFeeType(value) {
-  if (value === 'MONTHLY' || value === 'MONTHLY_FEE') return FEE_TYPE.MONTHLY_FEE;
-  if (value === 'COURSE' || value === 'COURSE_FEE') return FEE_TYPE.COURSE_FEE;
-  return value;
-}
-
-function normalizeCoursePaymentMode(value) {
-  if (value === 'FULL_PAYMENT') return COURSE_PAYMENT_MODE.FULL;
-  if (value === 'EMI_PAYMENT') return COURSE_PAYMENT_MODE.EMI;
-  return value;
-}
-
 const FEE_STATUS = Object.freeze({
   PENDING: 'PENDING',
   PARTIALLY_PAID: 'PARTIALLY_PAID',
@@ -119,10 +92,6 @@ module.exports = {
   PARENT_RELATIONSHIP,
   ATTENDANCE_STATUS,
   FEE_STRUCTURE_STATUS,
-  FEE_TYPE,
-  COURSE_PAYMENT_MODE,
-  normalizeFeeType,
-  normalizeCoursePaymentMode,
   FEE_STATUS,
   DISCOUNT_TYPE,
   PAYMENT_METHOD,

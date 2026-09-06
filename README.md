@@ -42,12 +42,14 @@ Request flow: `Route → Middleware → Controller → Service → Prisma → Po
 ## 1. Install dependencies
 
 **Backend**
+
 ```bash
 cd backend
 npm install
 ```
 
 **Frontend**
+
 ```bash
 cd frontend
 flutter pub get
@@ -61,6 +63,7 @@ cp .env.example .env
 ```
 
 Edit `.env`:
+
 ```
 NODE_ENV=development
 PORT=4000
@@ -78,6 +81,7 @@ createdb student_saas
 ```
 
 Or with `psql`:
+
 ```sql
 CREATE DATABASE student_saas;
 ```
@@ -93,6 +97,7 @@ npx prisma migrate dev --name init
 This creates the `institutes` and `users` tables from `prisma/schema.prisma` and applies the first migration.
 
 Optional — browse the DB visually:
+
 ```bash
 npx prisma studio
 ```
@@ -113,6 +118,7 @@ curl http://localhost:4000/api/health
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -172,6 +178,7 @@ The backend is now **plain JavaScript** (CommonJS `require`/`module.exports`), n
 ## Files created (Phase 2)
 
 **Backend**
+
 - `src/constants/roles.js` - `ROLES` / `INSTITUTE_STATUS` constants
 - `src/utils/password.js` - bcrypt hashing, temp-password generator
 - `src/utils/jwt.js` - access/refresh token sign & verify, token hashing
@@ -189,6 +196,7 @@ The backend is now **plain JavaScript** (CommonJS `require`/`module.exports`), n
 - `prisma/seed.js` - creates the first Super Admin (no public registration exists, so this is the only way in)
 
 **Frontend**
+
 - `lib/features/auth/domain/` - `AuthUser`, `AuthSession`, `AuthRepository` contract
 - `lib/features/auth/data/` - `AuthRepositoryImpl`, `AuthInterceptor` (Dio), storage keys
 - `lib/features/auth/presentation/` - `AuthController` (Riverpod state machine), Institute Login screen, Super Admin Login screen, minimal protected Home screen, shared `LoginForm` widget
@@ -230,6 +238,7 @@ Institute (instituteCode, status)
 ## Super Admin → Institute creation flow
 
 `POST /api/admin/institutes` (protected: `authenticate` → `authorize(SUPER_ADMIN)`):
+
 1. Generates the next sequential `instituteCode` (`P10001`, `P10002`, ...).
 2. Generates a random 12-character initial password.
 3. In a single DB transaction: creates the `Institute` row, then creates the `INSTITUTE_ADMIN` `User` row with the bcrypt hash of that password.
@@ -293,23 +302,28 @@ PATCH /api/admin/institutes/:id/status (Super Admin only)
 ## Testing this phase
 
 **Super Admin login**
+
 ```bash
 curl -X POST http://localhost:4000/api/auth/super-admin/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"change_me_now"}'
 ```
+
 Save the `accessToken` from the response.
 
 **Create an institute**
+
 ```bash
 curl -X POST http://localhost:4000/api/admin/institutes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <SUPER_ADMIN_ACCESS_TOKEN>" \
   -d '{"name":"ABC Coaching","email":"abc@example.com","adminName":"ABC Admin"}'
 ```
+
 Note the returned `instituteCode` (e.g. `P10001`) and `initialPassword` — shown only this once.
 
 **Institute login**
+
 ```bash
 curl -X POST http://localhost:4000/api/auth/institute/login \
   -H "Content-Type: application/json" \
@@ -317,6 +331,7 @@ curl -X POST http://localhost:4000/api/auth/institute/login \
 ```
 
 **Suspend it and confirm login is rejected**
+
 ```bash
 curl -X PATCH http://localhost:4000/api/admin/institutes/<institute id>/status \
   -H "Content-Type: application/json" \
@@ -334,6 +349,7 @@ curl -X POST http://localhost:4000/api/auth/institute/login \
 Create a second institute (`P10002`) the same way, log in as `P10001`'s admin, and confirm its access token's `instituteId` claim (decode the JWT) matches only `P10001` — that token can never carry `P10002`'s id, since the server derives it server-side at login, not from anything the client sends.
 
 **Authorization checks**
+
 - Call `POST /api/admin/institutes` with an Institute Admin's access token → expect `403`.
 - Call it with no `Authorization` header → expect `401`.
 
@@ -346,15 +362,17 @@ Create a second institute (`P10002`) the same way, log in as `P10001`'s admin, a
 New models, all with a required `instituteId`: `Student`, `Parent`, `Teacher`, `Batch`, `Course`, `Subject`, plus join tables `StudentParent` (student↔parent, many-to-many, relationship type per link), `TeacherBatch` (teacher↔batch, many-to-many), and `TeacherSubject` (teacher↔subject, many-to-many). `Institute` and `User` got back-relations added for these; nothing about existing Phase 1/2 fields changed.
 
 Notable design choices:
+
 - `StudentParent` is a join table, not a plain FK, so a student can have multiple guardians and each link carries its own `relationship` (FATHER/MOTHER/GUARDIAN/OTHER) — the same parent can be "guardian" to one child and "father" to another.
 - `Student.batchId` is a direct nullable FK (a student is in at most one batch at a time, reassignable via `POST /students/:id/batch`).
 - `Student.qrCode` is a nullable unique string added now but left unpopulated — Phase 4's QR attendance foundation, so that model doesn't need another migration later.
-- `Teacher.userId` is a nullable unique FK to `User` — a teacher *can* later get a login without a second auth system, but none do yet.
+- `Teacher.userId` is a nullable unique FK to `User` — a teacher _can_ later get a login without a second auth system, but none do yet.
 - A shared `RecordStatus` enum (`ACTIVE`/`INACTIVE`) is reused across Student/Parent/Teacher/Batch for soft-deactivation — nothing in this phase hard-deletes.
 
 ## Files created
 
 **Backend**
+
 - `src/utils/tenant.js` — `findOwnedOrThrow(model, id, instituteId, message)`: the single tenant-scoping helper every Phase 3 lookup uses. A cross-tenant id returns 404, not 403, so a lookup never even confirms a record's existence to another tenant.
 - `src/validators/{student,parent,teacher,batch}.validators.js`
 - `src/services/{student,parent,teacher,batch}.service.js`
@@ -376,7 +394,7 @@ Notable design choices:
 
 ## Tenant isolation, concretely
 
-Every service function takes `instituteId` from `req.auth` — set by the `authenticate` middleware from the verified JWT, never from the request body/query/params. Every single-record lookup is `findOwnedOrThrow(prisma.model, id, instituteId, ...)`, i.e. `where: { id, instituteId }` in one query — a cross-tenant id simply matches nothing and 404s. Relationship writes check **both** sides: linking a parent to a student checks the parent belongs to the caller's institute *and* the student does; assigning a batch to a teacher checks the batch belongs to the same institute; bulk operations (assign multiple teachers/students/subjects) verify the *entire* id set belongs to the institute — a set where only some ids match is rejected rather than proceeding with what matched.
+Every service function takes `instituteId` from `req.auth` — set by the `authenticate` middleware from the verified JWT, never from the request body/query/params. Every single-record lookup is `findOwnedOrThrow(prisma.model, id, instituteId, ...)`, i.e. `where: { id, instituteId }` in one query — a cross-tenant id simply matches nothing and 404s. Relationship writes check **both** sides: linking a parent to a student checks the parent belongs to the caller's institute _and_ the student does; assigning a batch to a teacher checks the batch belongs to the same institute; bulk operations (assign multiple teachers/students/subjects) verify the _entire_ id set belongs to the institute — a set where only some ids match is rejected rather than proceeding with what matched.
 
 ## API endpoints
 
@@ -453,6 +471,7 @@ flutter run
 All examples assume you're logged in as an Institute Admin and have `<ACCESS_TOKEN>` from `POST /api/auth/institute/login`.
 
 **Create a student**
+
 ```bash
 curl -X POST http://localhost:4000/api/students \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -460,6 +479,7 @@ curl -X POST http://localhost:4000/api/students \
 ```
 
 **Create a parent**
+
 ```bash
 curl -X POST http://localhost:4000/api/parents \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -467,6 +487,7 @@ curl -X POST http://localhost:4000/api/parents \
 ```
 
 **Link the parent to the student**
+
 ```bash
 curl -X POST http://localhost:4000/api/students/<studentId>/parent \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -474,6 +495,7 @@ curl -X POST http://localhost:4000/api/students/<studentId>/parent \
 ```
 
 **Create a teacher**
+
 ```bash
 curl -X POST http://localhost:4000/api/teachers \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -481,6 +503,7 @@ curl -X POST http://localhost:4000/api/teachers \
 ```
 
 **Create a batch**
+
 ```bash
 curl -X POST http://localhost:4000/api/batches \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -488,6 +511,7 @@ curl -X POST http://localhost:4000/api/batches \
 ```
 
 **Assign the student to the batch, and the teacher to the batch**
+
 ```bash
 curl -X POST http://localhost:4000/api/students/<studentId>/batch \
   -H "Authorization: Bearer <ACCESS_TOKEN>" -H "Content-Type: application/json" \
@@ -523,6 +547,7 @@ Repeat for parents, teachers, batches, and for cross-tenant relationship writes 
 ## Teacher authentication (new — reuses existing auth, not a second system)
 
 Phases 1–3 never built teacher login ("don't implement unless required"). Phase 4's flow requires it, so:
+
 - **`POST /api/auth/teacher/login`** (email + password) — issues tokens through the exact same `issueTokenPair`/refresh/`authenticate` pipeline as Super Admin and Institute login. Same JWT shape (`sub`, `role`, `instituteId`), same refresh-token rotation, same suspension re-check.
 - **`POST /api/teachers/:id/create-login`** (Institute Admin only) — provisions the linked `User` row for an existing teacher (must already have an email on file), generates a temp password, returns it once, stores only the hash. Mirrors exactly how institute-admin accounts get created in Phase 2.
 - `authenticate.js` was generalized: the live institute-suspension check now applies to **any** role with a non-null `instituteId` (previously `INSTITUTE_ADMIN`-only), so a suspended institute immediately blocks its teachers too, not just its admin.
@@ -530,6 +555,7 @@ Phases 1–3 never built teacher login ("don't implement unless required"). Phas
 ## Batches: Teachers now get read access to their own
 
 Phase 3 made `/batches` Institute-Admin-only. Phase 4's flow needs a teacher to select their own batch for attendance, so:
+
 - `GET /batches` and `GET /batches/:id` are now reachable by `INSTITUTE_ADMIN` **and** `TEACHER` — but the service layer filters results: a Teacher only ever sees batches they're actually assigned to (via `TeacherBatch`), verified server-side, never from a client-supplied filter.
 - Every mutation (`POST`/`PATCH`/`DELETE`, assign teachers/students) still requires `INSTITUTE_ADMIN` specifically, enforced with an additional `authorize()` call on those individual routes.
 - This reuses the existing `BatchesListScreen`/`BatchDetailScreen` in Flutter as-is — no separate "teacher dashboard" screen was built. The Home screen hides the Students/Parents/Teachers nav cards for a Teacher login (those stay Institute-Admin-only) and labels the Batches card "My Batches".
@@ -537,6 +563,7 @@ Phase 3 made `/batches` Institute-Admin-only. Phase 4's flow needs a teacher to 
 ## Tenant + assignment security model
 
 New shared helper `backend/src/utils/teacher-access.js`:
+
 - `assertCanAccessBatch(instituteId, auth, batchId)` — Institute Admin always passes; a Teacher must have a linked `Teacher` profile **and** an actual `TeacherBatch` link to that specific batch, or it throws `ForbiddenError`. Every other role (including `STUDENT`/`PARENT`, which have no login at all yet) is rejected outright.
 - This one function is reused by QR scan, manual marking, attendance history (when scoped to a batch), and the batch summary endpoint — one gate, not four separate copies of the same check.
 - QR scan additionally checks `student.instituteId === instituteId` and `student.batchId === batchId` before ever creating a record — a QR token from another institute, or a valid token for a student not enrolled in the scanned batch, both fail with a generic message rather than confirming anything about the record's existence elsewhere.
@@ -551,6 +578,7 @@ New shared helper `backend/src/utils/teacher-access.js`:
 ## Files created
 
 **Backend**
+
 - `src/utils/qr-token.js`, `src/utils/teacher-access.js`
 - `src/validators/attendance.validators.js`
 - `src/services/attendance.service.js`
@@ -558,6 +586,7 @@ New shared helper `backend/src/utils/teacher-access.js`:
 - `src/routes/attendance.routes.js`
 
 **Frontend**
+
 - `lib/features/attendance/` — full `domain/`, `data/`, `presentation/{providers,screens}` — QR scanner (`mobile_scanner`), Batch Attendance screen (scan + live present/remaining counts), Manual Attendance screen (date + per-student status), Attendance History screen (batch/student/status/date filters, paginated).
 - `lib/features/students/presentation/screens/student_qr_screen.dart` — enlarged QR display (`qr_flutter`).
 - `lib/features/auth/presentation/screens/teacher_login_screen.dart`.
@@ -594,6 +623,7 @@ All require `Authorization: Bearer <access token>` for `INSTITUTE_ADMIN` or `TEA
 ## Manual step required (not something this project can generate)
 
 `mobile_scanner` needs camera permission declared in the platform projects. This repo currently ships `lib/` and `pubspec.yaml` only — no `android/`/`ios/` folders (those come from running `flutter create .` once, which needs the Flutter SDK). After you generate them, add:
+
 - **Android** (`android/app/src/main/AndroidManifest.xml`): `<uses-permission android:name="android.permission.CAMERA"/>`
 - **iOS** (`ios/Runner/Info.plist`): `NSCameraUsageDescription` with a usage string.
 
@@ -629,6 +659,7 @@ flutter run
 10. Attendance appears in **Attendance History**, filterable by batch/date/status; the student's profile "Attendance" card updates with the new percentage.
 
 **Verify tenant + assignment isolation:**
+
 ```bash
 # A teacher from another institute (P10002) cannot use P10001's student QR:
 curl -X POST http://localhost:4000/api/attendance/scan \
@@ -659,8 +690,9 @@ The Phase 5 prompt's "Completed Phases" summary describes Phase 4 as including a
 ## Database
 
 New models (none of Phases 1–4's models were altered beyond adding back-relations):
+
 - **`FeeStructure`** + **`FeeStructureInstallment`** — the reusable template (e.g. "NEET 2026, ₹60,000, 3 installments"). Optionally scoped to a `Batch`.
-- **`StudentFee`** + **`FeeInstallment`** — created by *snapshotting* a `FeeStructure`'s numbers onto a specific student at assignment time. Editing a `FeeStructure` afterward (name/description/status only — see below) never retroactively changes an already-assigned student's fee.
+- **`StudentFee`** + **`FeeInstallment`** — created by _snapshotting_ a `FeeStructure`'s numbers onto a specific student at assignment time. Editing a `FeeStructure` afterward (name/description/status only — see below) never retroactively changes an already-assigned student's fee.
 - **`Payment`** — one row per payment, tied to exactly one `FeeInstallment`.
 - **`PaymentReceipt`** — one per payment, unique `receiptNumber`, with `previousOutstanding`/`remainingOutstanding` **snapshotted at issue time** so a receipt reads correctly forever even after later payments change the running balance.
 - **`PaymentRefund`** — modeled now, no endpoint yet (out of Phase 5 scope per the spec) — exists so a refund never needs to be a delete of the original payment when that phase arrives.
@@ -671,10 +703,11 @@ New models (none of Phases 1–4's models were altered beyond adding back-relati
 
 ## Discount handling
 
-`POST /fees/student` accepts *either* `discountAmount` (fixed) *or* `discountPercentage` (0–100), never both. The backend:
+`POST /fees/student` accepts _either_ `discountAmount` (fixed) _or_ `discountPercentage` (0–100), never both. The backend:
+
 1. Computes `discountAmount` server-side (percentage → amount conversion happens here, not in Flutter).
 2. Rejects a discount greater than the total (never a negative final amount).
-3. Distributes the discount **proportionally** across the fee structure's installment templates — not just off the first one — so a student's remaining installments each reflect a fair share. The last installment absorbs any rounding remainder so the parts always sum *exactly* to `finalAmount` (verified: a ₹5,000 discount split across three ₹20,000 installments produces 18333.33 / 18333.33 / 18333.34 — summing to exactly ₹55,000, no paisa lost).
+3. Distributes the discount **proportionally** across the fee structure's installment templates — not just off the first one — so a student's remaining installments each reflect a fair share. The last installment absorbs any rounding remainder so the parts always sum _exactly_ to `finalAmount` (verified: a ₹5,000 discount split across three ₹20,000 installments produces 18333.33 / 18333.33 / 18333.34 — summing to exactly ₹55,000, no paisa lost).
 
 Flutter's Assign Fee screen shows a live "Final Payable Amount" preview purely for the admin's convenience — the number that actually gets persisted is always recalculated server-side from scratch.
 
@@ -697,6 +730,7 @@ Every `/fees`, `/payments`, `/receipts` route requires `INSTITUTE_ADMIN` specifi
 ## Files created
 
 **Backend**
+
 - `src/utils/money.js`, `src/utils/fee-status.js`, `src/utils/receipt-number.js`
 - `src/validators/{fee-structure,student-fee,payment}.validators.js`
 - `src/services/{fee-structure,student-fee,payment,fee-dashboard}.service.js`
@@ -704,6 +738,7 @@ Every `/fees`, `/payments`, `/receipts` route requires `INSTITUTE_ADMIN` specifi
 - `src/routes/{fee,payment}.routes.js`
 
 **Frontend**
+
 - `lib/features/fees/` — full `domain/`, `data/` (including `receipt_pdf_generator.dart`), `presentation/{providers,screens,widgets}`: Fee Dashboard, Fee Structures list + create form, Fee Structure detail (activate/deactivate), Assign Fee (student search + discount toggle + live preview), All Student Fees list, Student Fee detail (installments + Pay buttons), Record Payment form, Payment History, Receipt view (with print/share via `pdf`+`printing`).
 - `lib/shared/widgets/currency_text.dart` — INR formatting helper.
 
@@ -781,10 +816,11 @@ The prompt's regression checklist asks to preserve "Theme toggle", "Grid/List to
 ## Database
 
 New models, all tenant-scoped:
+
 - **`Test`** — one per test/exam. `totalMarks` is denormalized (kept in sync via transaction whenever subjects are added/edited/removed) so it never has to be recomputed from `TestSubject` rows on every read.
 - **`TestSubject`** — per-subject max/passing marks for a test. `@@unique([testId, subjectId])` rejects duplicate subjects on the same test at the database level, not just in a validator.
 - **`StudentSubjectMark`** — the raw entry a teacher edits, one row per (test, student, subject). `maxMarks` is snapshotted from `TestSubject` at entry time (same snapshot pattern as Phase 5's `StudentFee`), so a later max-marks edit never silently reinterprets an already-entered score.
-- **`StudentTestResult`** — a **computed rollup**, not something created upfront. It's upserted automatically the moment a student has a mark recorded for every subject on the test, and refreshed on every subsequent mark save. This is a deliberate deviation from the spec's suggested shape (which nested `StudentSubjectMark` under a pre-existing `StudentTestResult`) — nesting that way creates a chicken-and-egg problem, since marks are entered subject-by-subject *before* any result exists. `publishedAt` is only stamped when the whole `Test` is published.
+- **`StudentTestResult`** — a **computed rollup**, not something created upfront. It's upserted automatically the moment a student has a mark recorded for every subject on the test, and refreshed on every subsequent mark save. This is a deliberate deviation from the spec's suggested shape (which nested `StudentSubjectMark` under a pre-existing `StudentTestResult`) — nesting that way creates a chicken-and-egg problem, since marks are entered subject-by-subject _before_ any result exists. `publishedAt` is only stamped when the whole `Test` is published.
 
 Marks are plain `Int` (whole-number scores, matching the spec's own 82/76/91 examples) — this explicitly isn't a financial module and doesn't touch Phase 5's `Decimal` money fields. `percentage` is `Decimal(5,2)` since grade-boundary comparisons (89.99 vs 90) need exact decimal comparison; it reuses the same generic Decimal helpers from `utils/money.js` that Phase 5 uses — a shared arithmetic utility, not Phase-5-specific logic.
 
@@ -800,11 +836,12 @@ Marks are plain `Int` (whole-number scores, matching the spec's own 82/76/91 exa
 
 ## Authorization
 
-Every `/tests/*` route requires `INSTITUTE_ADMIN` or `TEACHER`. Mutating/admin-only actions (create/edit/cancel test, subject configuration, publish/unpublish) additionally require `INSTITUTE_ADMIN` specifically — a `TEACHER` calling those gets `403` regardless of batch assignment. For everything else (view tests, enter marks, view results), a `TEACHER` is restricted to batches they're actually assigned to via the same `assertCanAccessBatch` helper Phase 4 built for attendance — reused as-is, not reimplemented. `GET /students/:studentId/results` and `.../results/:resultId` are mounted at `/students` but registered *before* the general Institute-Admin-only `/students` gate, with their own `[INSTITUTE_ADMIN, TEACHER]` authorize — a Teacher can see their own students' results without getting full student-management access, and any `/students` request that doesn't match a results route falls through to the stricter gate unaffected.
+Every `/tests/*` route requires `INSTITUTE_ADMIN` or `TEACHER`. Mutating/admin-only actions (create/edit/cancel test, subject configuration, publish/unpublish) additionally require `INSTITUTE_ADMIN` specifically — a `TEACHER` calling those gets `403` regardless of batch assignment. For everything else (view tests, enter marks, view results), a `TEACHER` is restricted to batches they're actually assigned to via the same `assertCanAccessBatch` helper Phase 4 built for attendance — reused as-is, not reimplemented. `GET /students/:studentId/results` and `.../results/:resultId` are mounted at `/students` but registered _before_ the general Institute-Admin-only `/students` gate, with their own `[INSTITUTE_ADMIN, TEACHER]` authorize — a Teacher can see their own students' results without getting full student-management access, and any `/students` request that doesn't match a results route falls through to the stricter gate unaffected.
 
 ## Files created
 
 **Backend**
+
 - `src/utils/grade.js`
 - `src/validators/{test,marks}.validators.js`
 - `src/services/{test,marks,result}.service.js`
@@ -812,6 +849,7 @@ Every `/tests/*` route requires `INSTITUTE_ADMIN` or `TEACHER`. Mutating/admin-o
 - `src/routes/{test,student-results}.routes.js`
 
 **Frontend**
+
 - `lib/features/tests/` — full `domain/`, `data/`, `presentation/{providers,screens,widgets}`: Tests list (doubles as Institute Admin's "Tests Dashboard" and Teacher's "My Tests", same screen, server-filtered), Create Test (dynamic subject rows, live total-marks calculation), Test Detail (subject config, publish/unpublish, links into marks entry), Marks Entry (subject → student roster → enter/edit → save, prefilled with existing marks), Test Results (ranked table + class analytics), Student Result Detail (the spec's exact mockup: subject-wise marks, total, percentage, grade, pass/fail).
 
 ## Files modified
@@ -866,7 +904,8 @@ flutter run
 
 ## Verification performed in this sandbox
 
-Same limitation as every prior phase: `prisma generate` can't complete here (blocked engine binary), so nothing was tested against a live database. What *was* verified:
+Same limitation as every prior phase: `prisma generate` can't complete here (blocked engine binary), so nothing was tested against a live database. What _was_ verified:
+
 - Full syntax check across every backend file, and a full app load (all routes → controllers → services) against a mocked Prisma client.
 - Real Decimal-arithmetic tests (temporarily installed genuine `decimal.js`, removed afterward) confirming every grade boundary lands correctly, including the exact 89.99-vs-90.00 edge.
 - The spec's own worked example (249/300 → 83% → grade A → PASS) reproduced exactly by `computeResult()`.

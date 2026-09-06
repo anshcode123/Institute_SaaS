@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/widgets/theme_toggle.dart';
 import '../providers/auth_providers.dart';
 import '../providers/auth_state.dart';
 import '../widgets/login_form.dart';
-import '../../../../shared/widgets/theme_toggle.dart';
 
 /// The only login screen institutes ever see. There is deliberately no
 /// "Create Account" / "Sign up" affordance anywhere on this screen -
@@ -47,9 +47,8 @@ class InstituteLoginScreen extends ConsumerWidget {
                       ? authState.errorMessage
                       : null,
                   onSubmit: (instituteCode, password) {
-                    ref
-                        .read(authControllerProvider.notifier)
-                        .loginInstitute(instituteCode: instituteCode, password: password);
+                    ref.read(authControllerProvider.notifier).loginInstitute(
+                        instituteCode: instituteCode, password: password);
                   },
                 ),
                 const SizedBox(height: 12),

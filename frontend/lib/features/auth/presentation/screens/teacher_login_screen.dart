@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/widgets/theme_toggle.dart';
 import '../providers/auth_providers.dart';
 import '../providers/auth_state.dart';
 import '../widgets/login_form.dart';
-import '../../../../shared/widgets/theme_toggle.dart';
 
 class TeacherLoginScreen extends ConsumerWidget {
   const TeacherLoginScreen({super.key});
@@ -18,7 +18,10 @@ class TeacherLoginScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Teacher Login'), actions: const [ThemeToggle()]),
+      appBar: AppBar(
+        title: const Text('Teacher Login'),
+        actions: const [ThemeToggle()],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),

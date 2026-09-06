@@ -1,11 +1,13 @@
 const { z } = require('zod');
-const { decimalString } = require('./fee-structure.validators');
+const { decimalString, dateOnlyString } = require('./fee-structure.validators');
 const { FEE_STATUS } = require('../constants/roles');
 
 const assignFeeSchema = z
   .object({
     studentId: z.string().uuid('Invalid student id'),
     feeStructureId: z.string().uuid('Invalid fee structure id'),
+    feeStartDate: dateOnlyString,
+    monthlyFeeGroupId: z.string().uuid('Invalid monthly fee group id').optional(),
     discountAmount: decimalString.optional(),
     discountPercentage: z.coerce.number().min(0).max(100).optional(),
   })

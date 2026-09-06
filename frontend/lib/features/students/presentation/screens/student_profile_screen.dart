@@ -66,14 +66,17 @@ class _ProfileBody extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 44,
-                backgroundImage:
-                    student.profilePhoto != null ? NetworkImage(student.profilePhoto!) : null,
+                backgroundImage: student.profilePhoto != null
+                    ? NetworkImage(student.profilePhoto!)
+                    : null,
                 child: student.profilePhoto == null
-                    ? Text(student.firstName[0], style: const TextStyle(fontSize: 32))
+                    ? Text(student.firstName[0],
+                        style: const TextStyle(fontSize: 32))
                     : null,
               ),
               const SizedBox(height: 12),
-              Text(student.fullName, style: Theme.of(context).textTheme.headlineSmall),
+              Text(student.fullName,
+                  style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 4),
               StatusBadge(status: student.status),
             ],
@@ -89,10 +92,13 @@ class _ProfileBody extends ConsumerWidget {
             _InfoRow('Email', student.email ?? '-'),
             _InfoRow(
               'Date of Birth',
-              student.dateOfBirth != null ? dateFormat.format(student.dateOfBirth!) : '-',
+              student.dateOfBirth != null
+                  ? dateFormat.format(student.dateOfBirth!)
+                  : '-',
             ),
             _InfoRow('Address', student.address ?? '-'),
-            _InfoRow('Admission Date', dateFormat.format(student.admissionDate)),
+            _InfoRow(
+                'Admission Date', dateFormat.format(student.admissionDate)),
           ],
         ),
         const SizedBox(height: 16),
@@ -101,8 +107,8 @@ class _ProfileBody extends ConsumerWidget {
           rows: student.parents.isEmpty
               ? [const _InfoRow('-', 'No parent linked yet')]
               : student.parents
-                  .map((p) => _InfoRow(
-                      p.relationship, '${p.name}${p.phone != null ? ' - ${p.phone}' : ''}'))
+                  .map((p) => _InfoRow(p.relationship,
+                      '${p.name}${p.phone != null ? ' - ${p.phone}' : ''}'))
                   .toList(),
           trailing: TextButton(
             onPressed: () => context.push('/students/$studentId/link-parent'),
@@ -149,11 +155,14 @@ class _ProfileBody extends ConsumerWidget {
                   final confirmed = await confirmAction(
                     context,
                     title: 'Deactivate student?',
-                    message: 'This can be reversed later by editing the student.',
+                    message:
+                        'This can be reversed later by editing the student.',
                     confirmLabel: 'Deactivate',
                   );
                   if (!confirmed) return;
-                  await ref.read(studentRepositoryProvider).deactivate(studentId);
+                  await ref
+                      .read(studentRepositoryProvider)
+                      .deactivate(studentId);
                   ref.invalidate(studentDetailProvider(studentId));
                   ref.read(studentListControllerProvider.notifier).load();
                 },
@@ -199,7 +208,8 @@ class _InfoCard extends StatelessWidget {
                   children: [
                     SizedBox(
                         width: 130,
-                        child: Text(row.label, style: const TextStyle(color: Colors.grey))),
+                        child: Text(row.label,
+                            style: const TextStyle(color: Colors.grey))),
                     Expanded(child: Text(row.value)),
                   ],
                 ),
@@ -229,9 +239,11 @@ class _AttendanceSummaryCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Attendance', style: Theme.of(context).textTheme.titleMedium),
+                Text('Attendance',
+                    style: Theme.of(context).textTheme.titleMedium),
                 TextButton(
-                  onPressed: () => context.push('/attendance/history?studentId=$studentId'),
+                  onPressed: () =>
+                      context.push('/attendance/history?studentId=$studentId'),
                   child: const Text('View history'),
                 ),
               ],
@@ -250,18 +262,19 @@ class _AttendanceSummaryCard extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _statChip('Total', summary.total.toString()),
-                      _statChip('Present', summary.present.toString(), color: Colors.green),
-                      _statChip('Absent', summary.absent.toString(), color: Colors.red),
-                      _statChip('Late', summary.late.toString(), color: Colors.amber),
+                      _statChip('Present', summary.present.toString(),
+                          color: Colors.green),
+                      _statChip('Absent', summary.absent.toString(),
+                          color: Colors.red),
+                      _statChip('Late', summary.late.toString(),
+                          color: Colors.amber),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Attendance: ${summary.percentage}%',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary),
                   ),
                 ],
               ),
@@ -275,7 +288,9 @@ class _AttendanceSummaryCard extends ConsumerWidget {
   Widget _statChip(String label, String value, {Color? color}) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: color)),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
@@ -302,7 +317,8 @@ class _StudentFeesCard extends ConsumerWidget {
               children: [
                 Text('Fees', style: Theme.of(context).textTheme.titleMedium),
                 TextButton(
-                  onPressed: () => context.push('/fees/assign?studentId=$studentId'),
+                  onPressed: () =>
+                      context.push('/fees/assign?studentId=$studentId'),
                   child: const Text('Assign fee'),
                 ),
               ],
@@ -324,10 +340,13 @@ class _StudentFeesCard extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total: ${formatCurrency(result.summary.finalAmount)}'),
+                        Text(
+                            'Total: ${formatCurrency(result.summary.finalAmount)}'),
                         Text(
                           'Outstanding: ${formatCurrency(result.summary.outstandingAmount)}',
-                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -368,7 +387,8 @@ class _StudentTestsCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tests & Results', style: Theme.of(context).textTheme.titleMedium),
+            Text('Tests & Results',
+                style: Theme.of(context).textTheme.titleMedium),
             const Divider(),
             asyncResults.when(
               loading: () => const Padding(
@@ -386,16 +406,21 @@ class _StudentTestsCard extends ConsumerWidget {
                     for (final result in results)
                       ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text('${result.obtainedMarks} / ${result.totalMarks}'),
-                        subtitle: Text('${result.percentage}% • Grade ${result.grade}'),
+                        title: Text(
+                            '${result.obtainedMarks} / ${result.totalMarks}'),
+                        subtitle: Text(
+                            '${result.percentage}% • Grade ${result.grade}'),
                         trailing: Text(
                           result.status,
                           style: TextStyle(
-                            color: result.status == 'PASS' ? Colors.green : Colors.red,
+                            color: result.status == 'PASS'
+                                ? Colors.green
+                                : Colors.red,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        onTap: () => context.push('/students/$studentId/results/${result.id}'),
+                        onTap: () => context
+                            .push('/students/$studentId/results/${result.id}'),
                       ),
                   ],
                 );

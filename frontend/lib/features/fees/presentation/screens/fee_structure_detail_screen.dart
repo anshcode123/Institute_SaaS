@@ -41,12 +41,6 @@ class FeeStructureDetailScreen extends ConsumerWidget {
             ],
             const SizedBox(height: 8),
             FeeStatusChip(status: structure.status),
-            const SizedBox(height: 8),
-            Text(
-              '${structure.feeType} fee'
-              '${structure.coursePaymentMode != null ? ' • ${structure.coursePaymentMode}' : ''}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             const SizedBox(height: 16),
             Card(
               child: Padding(

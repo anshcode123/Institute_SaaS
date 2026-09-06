@@ -12,32 +12,48 @@ class FeeRepositoryImpl implements FeeRepository {
   Future<FeeStructure> createFeeStructure({
     required String name,
     String? description,
-    required double totalAmount,
-    String? batchId,
     required String feeType,
+    double? totalAmount,
+    String? courseId,
     String? coursePaymentMode,
-    required List<FeeStructureInstallmentTemplate> installments,
+    int? monthlyDueDay,
+    double? lateFee,
+    int? gracePeriodDays,
+    String? batchId,
+    List<FeeStructureInstallmentTemplate> installments = const [],
+    List<MonthlyFeeGroup> monthlyGroups = const [],
   }) async {
     final data = await _send('POST', '/fees/structures', {
       'name': name,
-      if (description != null && description.isNotEmpty) 'description': description,
-      'totalAmount': totalAmount.toStringAsFixed(2),
-      if (batchId != null) 'batchId': batchId,
+      if (description != null && description.isNotEmpty)
+        'description': description,
       'feeType': feeType,
+      if (totalAmount != null) 'totalAmount': totalAmount.toStringAsFixed(2),
+      if (courseId != null) 'courseId': courseId,
       if (coursePaymentMode != null) 'coursePaymentMode': coursePaymentMode,
-      'installments': installments.map((i) => i.toJson()).toList(),
+      if (monthlyDueDay != null) 'monthlyDueDay': monthlyDueDay,
+      if (lateFee != null) 'lateFee': lateFee.toStringAsFixed(2),
+      if (gracePeriodDays != null) 'gracePeriodDays': gracePeriodDays,
+      if (batchId != null) 'batchId': batchId,
+      if (feeType == 'COURSE')
+        'installments': installments.map((i) => i.toJson()).toList(),
+      if (feeType == 'MONTHLY')
+        'monthlyGroups': monthlyGroups.map((group) => group.toJson()).toList(),
     });
     return FeeStructure.fromJson(data);
   }
 
   @override
-  Future<List<FeeStructure>> listFeeStructures({String? status, String? batchId}) async {
+  Future<List<FeeStructure>> listFeeStructures(
+      {String? status, String? batchId}) async {
     final data = await _get('/fees/structures', queryParameters: {
       if (status != null) 'status': status,
       if (batchId != null) 'batchId': batchId,
     });
     final items = data['items'] as List;
-    return items.map((e) => FeeStructure.fromJson(e as Map<String, dynamic>)).toList();
+    return items
+        .map((e) => FeeStructure.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -47,7 +63,8 @@ class FeeRepositoryImpl implements FeeRepository {
   }
 
   @override
-  Future<FeeStructure> updateFeeStructure(String id, Map<String, dynamic> data) async {
+  Future<FeeStructure> updateFeeStructure(
+      String id, Map<String, dynamic> data) async {
     final result = await _send('PATCH', '/fees/structures/$id', data);
     return FeeStructure.fromJson(result);
   }
@@ -56,13 +73,18 @@ class FeeRepositoryImpl implements FeeRepository {
   Future<StudentFee> assignFee({
     required String studentId,
     required String feeStructureId,
+    required DateTime feeStartDate,
+    String? monthlyFeeGroupId,
     double? discountAmount,
     double? discountPercentage,
   }) async {
     final data = await _send('POST', '/fees/student', {
       'studentId': studentId,
       'feeStructureId': feeStructureId,
-      if (discountAmount != null) 'discountAmount': discountAmount.toStringAsFixed(2),
+      'feeStartDate': feeStartDate.toIso8601String().split('T').first,
+      if (monthlyFeeGroupId != null) 'monthlyFeeGroupId': monthlyFeeGroupId,
+      if (discountAmount != null)
+        'discountAmount': discountAmount.toStringAsFixed(2),
       if (discountPercentage != null) 'discountPercentage': discountPercentage,
     });
     return StudentFee.fromJson(data);
@@ -151,19 +173,24 @@ class FeeRepositoryImpl implements FeeRepository {
     return Receipt.fromJson(data);
   }
 
-  Future<Map<String, dynamic>> _get(String path, {Map<String, dynamic>? queryParameters}) async {
+  Future<Map<String, dynamic>> _get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParameters);
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }
   }
 
-  Future<Map<String, dynamic>> _send(String method, String path, Map<String, dynamic>? body) async {
+  Future<Map<String, dynamic>> _send(
+      String method, String path, Map<String, dynamic>? body) async {
     try {
-      final response = await _dio.request(path, data: body, options: Options(method: method));
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      final response = await _dio.request(path,
+          data: body, options: Options(method: method));
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }

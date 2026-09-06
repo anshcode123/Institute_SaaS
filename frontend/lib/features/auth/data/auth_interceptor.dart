@@ -1,14 +1,18 @@
 import 'package:dio/dio.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/storage/secure_storage.dart';
 import 'auth_storage_keys.dart';
 
+/// Attaches the access token to every request and transparently refreshes
+/// it on a 401 (once), retrying the original request. If the refresh
+/// itself fails, the session is cleared and [onSessionExpired] is called
+/// so the app-level auth state can drop back to "unauthenticated".
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({required this.dio, required this.onSessionExpired});
 
   final Dio dio;
   final Future<void> Function() onSessionExpired;
-  Future<String>? _refreshFuture;
+
+  bool _isRefreshing = false;
 
   static const _authFreeEndpoints = [
     '/auth/super-admin/login',
@@ -19,13 +23,9 @@ class AuthInterceptor extends Interceptor {
   bool _isAuthFree(String path) => _authFreeEndpoints.any(path.endsWith);
 
   @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
+  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (!_isAuthFree(options.path)) {
-      final token =
-          await SecureStorage.instance.read(AuthStorageKeys.accessToken);
+      final token = await SecureStorage.instance.read(AuthStorageKeys.accessToken);
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
@@ -34,81 +34,41 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
-  Future<void> onError(
-    DioException err,
-    ErrorInterceptorHandler handler,
-  ) async {
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final status = err.response?.statusCode;
     final path = err.requestOptions.path;
-    if (status != 401 ||
-        _isAuthFree(path) ||
-        err.requestOptions.extra['authRetry'] == true) {
+
+    if (status != 401 || _isAuthFree(path) || _isRefreshing) {
       handler.next(err);
       return;
     }
 
-    final refreshFuture = _refreshFuture ??= _refreshAccessToken();
+    _isRefreshing = true;
     try {
-      final newAccessToken = await refreshFuture;
-      final retryOptions = err.requestOptions;
-      retryOptions.extra['authRetry'] = true;
-      retryOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-      handler.resolve(await dio.fetch(retryOptions));
-    } on _InvalidRefreshToken {
-      await SecureStorage.instance.delete(AuthStorageKeys.accessToken);
-      await SecureStorage.instance.delete(AuthStorageKeys.refreshToken);
-      await SecureStorage.instance.delete(AuthStorageKeys.userJson);
-      await onSessionExpired();
-      handler.next(err);
-    } on DioException {
-      handler.next(err);
-    } finally {
-      if (identical(_refreshFuture, refreshFuture)) {
-        _refreshFuture = null;
+      final refreshToken = await SecureStorage.instance.read(AuthStorageKeys.refreshToken);
+      if (refreshToken == null) {
+        await onSessionExpired();
+        handler.next(err);
+        return;
       }
-    }
-  }
 
-  Future<String> _refreshAccessToken() async {
-    final refreshToken =
-        await SecureStorage.instance.read(AuthStorageKeys.refreshToken);
-    if (refreshToken == null) throw _InvalidRefreshToken();
-
-    final refreshDio = Dio(
-      BaseOptions(
-        baseUrl: AppConstants.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
-
-    try {
-      final response = await refreshDio.post(
-        '/auth/refresh',
-        data: {'refreshToken': refreshToken},
-      );
+      final response = await dio.post('/auth/refresh', data: {'refreshToken': refreshToken});
       final data = response.data['data'] as Map<String, dynamic>;
       final newAccessToken = data['accessToken'] as String;
       final newRefreshToken = data['refreshToken'] as String;
 
-      await SecureStorage.instance.write(
-        AuthStorageKeys.accessToken,
-        newAccessToken,
-      );
-      await SecureStorage.instance.write(
-        AuthStorageKeys.refreshToken,
-        newRefreshToken,
-      );
-      return newAccessToken;
-    } on DioException catch (error) {
-      if (error.response?.statusCode == 401 ||
-          error.response?.statusCode == 403) {
-        throw _InvalidRefreshToken();
-      }
-      rethrow;
+      await SecureStorage.instance.write(AuthStorageKeys.accessToken, newAccessToken);
+      await SecureStorage.instance.write(AuthStorageKeys.refreshToken, newRefreshToken);
+
+      final retryOptions = err.requestOptions;
+      retryOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+      final retryResponse = await dio.fetch(retryOptions);
+      handler.resolve(retryResponse);
+    } catch (_) {
+      await onSessionExpired();
+      handler.next(err);
+    } finally {
+      _isRefreshing = false;
     }
   }
 }
-
-class _InvalidRefreshToken implements Exception {}

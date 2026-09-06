@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
-import '../../../../shared/widgets/grid_list_toggle.dart';
 import '../../domain/attendance_models.dart';
 import '../providers/attendance_providers.dart';
 
@@ -13,16 +12,19 @@ const _statusFilters = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
 /// Filters: batch (pre-set when arriving from a batch screen), date,
 /// status. Paginated - loads one page at a time rather than everything.
 class AttendanceHistoryScreen extends ConsumerStatefulWidget {
-  const AttendanceHistoryScreen({super.key, this.initialBatchId, this.initialStudentId});
+  const AttendanceHistoryScreen(
+      {super.key, this.initialBatchId, this.initialStudentId});
 
   final String? initialBatchId;
   final String? initialStudentId;
 
   @override
-  ConsumerState<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+  ConsumerState<AttendanceHistoryScreen> createState() =>
+      _AttendanceHistoryScreenState();
 }
 
-class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScreen> {
+class _AttendanceHistoryScreenState
+    extends ConsumerState<AttendanceHistoryScreen> {
   String? _statusFilter;
   DateTime? _dateFilter;
   int _page = 1;
@@ -30,7 +32,6 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
   String? _error;
   List<AttendanceRecord> _items = [];
   int _total = 0;
-  RecordViewMode _viewMode = RecordViewMode.list;
 
   @override
   void initState() {
@@ -54,7 +55,8 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
         _error = null;
       });
     } catch (e) {
-      setState(() => _error = e is AppException ? e.message : 'Failed to load history');
+      setState(() =>
+          _error = e is AppException ? e.message : 'Failed to load history');
     } finally {
       setState(() => _loading = false);
     }
@@ -77,12 +79,7 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance History'),
-        actions: [
-          GridListToggle(value: _viewMode, onChanged: (value) => setState(() => _viewMode = value)),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Attendance History')),
       body: Column(
         children: [
           Padding(
@@ -92,7 +89,9 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
               children: [
                 ActionChip(
                   avatar: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(_dateFilter != null ? DateFormat.yMMMd().format(_dateFilter!) : 'Any date'),
+                  label: Text(_dateFilter != null
+                      ? DateFormat.yMMMd().format(_dateFilter!)
+                      : 'Any date'),
                   onPressed: _pickDate,
                 ),
                 if (_dateFilter != null)
@@ -110,8 +109,10 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
                   value: _statusFilter,
                   hint: const Text('Status'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('All statuses')),
-                    ..._statusFilters.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                    const DropdownMenuItem(
+                        value: null, child: Text('All statuses')),
+                    ..._statusFilters
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -162,35 +163,12 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
     if (_items.isEmpty) {
-      return const EmptyState(message: 'No attendance records found.', icon: Icons.event_busy);
+      return const EmptyState(
+          message: 'No attendance records found.', icon: Icons.event_busy);
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: _viewMode == RecordViewMode.grid
-          ? ResponsiveRecordGrid(
-              itemCount: _items.length,
-              itemBuilder: (context, index) {
-                final record = _items[index];
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(record.student?.fullName ?? 'Unknown student',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 8),
-                        Text(record.batch?.name ?? '-'),
-                        Text(DateFormat.yMMMd().format(record.date)),
-                        const Spacer(),
-                        _StatusChip(status: record.status),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            )
-          : ListView.builder(
+      child: ListView.builder(
         itemCount: _items.length,
         itemBuilder: (context, index) {
           final record = _items[index];
@@ -201,7 +179,7 @@ class _AttendanceHistoryScreenState extends ConsumerState<AttendanceHistoryScree
               subtitle: Text(
                 '${record.batch?.name ?? '-'} • ${DateFormat.yMMMd().format(record.date)}\n'
                 'Marked by ${record.markedBy?.name ?? '-'} at ${DateFormat.jm().format(record.markedAt)}',
-                    ),
+              ),
               isThreeLine: true,
               trailing: _StatusChip(status: record.status),
             ),
@@ -235,8 +213,12 @@ class _StatusChip extends StatelessWidget {
     final color = _color();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(      color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-      child: Text(status, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12)),
+      child: Text(status,
+          style: TextStyle(
+              color: color, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

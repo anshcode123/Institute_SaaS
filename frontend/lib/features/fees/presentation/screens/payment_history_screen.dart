@@ -15,7 +15,8 @@ class PaymentHistoryScreen extends ConsumerStatefulWidget {
   final String? studentId;
 
   @override
-  ConsumerState<PaymentHistoryScreen> createState() => _PaymentHistoryScreenState();
+  ConsumerState<PaymentHistoryScreen> createState() =>
+      _PaymentHistoryScreenState();
 }
 
 class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
@@ -41,7 +42,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
         _error = null;
       });
     } catch (e) {
-      setState(() => _error = e is AppException ? e.message : 'Failed to load payments');
+      setState(() =>
+          _error = e is AppException ? e.message : 'Failed to load payments');
     } finally {
       setState(() => _loading = false);
     }
@@ -59,7 +61,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
     if (_items.isEmpty) {
-      return const EmptyState(message: 'No payments recorded yet.', icon: Icons.payments_outlined);
+      return const EmptyState(
+          message: 'No payments recorded yet.', icon: Icons.payments_outlined);
     }
     return RefreshIndicator(
       onRefresh: _load,

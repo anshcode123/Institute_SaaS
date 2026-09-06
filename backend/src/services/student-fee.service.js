@@ -32,7 +32,7 @@ function buildDiscountedInstallments(templates, totalAmount, discountAmount) {
 }
 
 async function assignFee(instituteId, actorUserId, data) {
-  const { studentId, feeStructureId, discountAmount: discountAmountInput, discountPercentage } = data;
+  const { studentId, feeStructureId, feeStartDate, monthlyFeeGroupId, discountAmount: discountAmountInput, discountPercentage } = data;
 
   await findOwnedOrThrow(prisma.student, studentId, instituteId, 'Student not found');
 
@@ -41,7 +41,7 @@ async function assignFee(instituteId, actorUserId, data) {
     feeStructureId,
     instituteId,
     'Fee structure not found',
-    { include: { installments: { orderBy: { installmentNumber: 'asc' } } } },
+    { include: { installments: { orderBy: { installmentNumber: 'asc' } }, monthlyGroups: { include: { subjectPrices: true } } } },
   );
 
   if (feeStructure.status !== FEE_STRUCTURE_STATUS.ACTIVE) {
@@ -55,7 +55,13 @@ async function assignFee(instituteId, actorUserId, data) {
     throw new ConflictError('This fee structure is already assigned to this student');
   }
 
-  const totalAmount = toDecimal(feeStructure.totalAmount);
+  if (feeStructure.feeType === 'MONTHLY' && !monthlyFeeGroupId) throw new ValidationError('Select a fee group for this monthly fee');
+  if (feeStructure.feeType === 'COURSE' && monthlyFeeGroupId) throw new ValidationError('Fee groups are only valid for monthly fees');
+  const monthlyGroup = monthlyFeeGroupId ? feeStructure.monthlyGroups.find((group) => group.id === monthlyFeeGroupId) : null;
+  if (monthlyFeeGroupId && !monthlyGroup) throw new ValidationError('Fee group does not belong to this fee structure');
+  const totalAmount = monthlyGroup
+    ? (monthlyGroup.pricingType === 'COMBINED' ? toDecimal(monthlyGroup.combinedAmount) : monthlyGroup.subjectPrices.reduce((sum, item) => add(sum, item.monthlyAmount), toDecimal(0)))
+    : toDecimal(feeStructure.totalAmount);
   let discountType = DISCOUNT_TYPE.NONE;
   let discountValue = toDecimal(0);
   let discountAmount = toDecimal(0);
@@ -76,11 +82,17 @@ async function assignFee(instituteId, actorUserId, data) {
   }
 
   const finalAmount = subtract(totalAmount, discountAmount);
-  const installmentRows = buildDiscountedInstallments(
-    feeStructure.installments,
-    totalAmount,
-    discountAmount,
-  );
+  let installmentRows = buildDiscountedInstallments(feeStructure.installments, totalAmount, discountAmount);
+  if (feeStructure.feeType === 'COURSE' && feeStructure.coursePaymentMode === 'FULL') {
+    installmentRows = [{ installmentNumber: 1, dueDate: feeStartDate, amount: finalAmount }];
+  }
+  if (feeStructure.feeType === 'MONTHLY') {
+    const dueDate = new Date(feeStartDate);
+    const dueDay = Math.min(feeStructure.monthlyDueDay, new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate());
+    dueDate.setDate(dueDay);
+    if (dueDate < feeStartDate) dueDate.setMonth(dueDate.getMonth() + 1);
+    installmentRows = [{ installmentNumber: 1, dueDate, amount: finalAmount }];
+  }
 
   const created = await prisma.$transaction(async (tx) => {
     const studentFee = await tx.studentFee.create({
@@ -88,6 +100,8 @@ async function assignFee(instituteId, actorUserId, data) {
         instituteId,
         studentId,
         feeStructureId,
+        feeStartDate,
+        monthlyFeeGroupId: monthlyFeeGroupId ?? null,
         totalAmount,
         discountType,
         discountValue,
@@ -141,9 +155,8 @@ async function listStudentFees(instituteId, query) {
       include: {
         installments: { orderBy: { installmentNumber: 'asc' } },
         student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
-        feeStructure: {
-          select: { id: true, name: true, currency: true, feeType: true, coursePaymentMode: true },
-        },
+        feeStructure: { select: { id: true, name: true, currency: true, feeType: true } },
+        monthlyFeeGroup: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -172,9 +185,8 @@ async function getStudentFeeById(instituteId, id) {
       include: {
         installments: { orderBy: { installmentNumber: 'asc' } },
         student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
-        feeStructure: {
-          select: { id: true, name: true, currency: true, feeType: true, coursePaymentMode: true },
-        },
+        feeStructure: { select: { id: true, name: true, currency: true, feeType: true } },
+        monthlyFeeGroup: { select: { id: true, name: true } },
         payments: { orderBy: { paymentDate: 'desc' } },
       },
     },
@@ -191,9 +203,8 @@ async function getFeesForStudent(instituteId, studentId) {
     where: { instituteId, studentId },
     include: {
       installments: { orderBy: { installmentNumber: 'asc' } },
-      feeStructure: {
-        select: { id: true, name: true, currency: true, feeType: true, coursePaymentMode: true },
-      },
+      feeStructure: { select: { id: true, name: true, currency: true, feeType: true } },
+      monthlyFeeGroup: { select: { id: true, name: true } },
       payments: { orderBy: { paymentDate: 'desc' }, include: { receipt: true } },
     },
     orderBy: { createdAt: 'desc' },
