@@ -30,6 +30,19 @@ class FeeStructureInstallmentTemplate {
       };
 }
 
+String _normalizeFeeType(String? value) {
+  switch (value) {
+    case 'MONTHLY':
+    case 'MONTHLY_FEE':
+      return 'MONTHLY_FEE';
+    case 'COURSE':
+    case 'COURSE_FEE':
+      return 'COURSE_FEE';
+    default:
+      return value ?? 'MONTHLY_FEE';
+  }
+}
+
 class FeeStructure {
   final String id;
   final String name;
@@ -49,7 +62,7 @@ class FeeStructure {
     required this.totalAmount,
     required this.currency,
     required this.status,
-    this.feeType = 'MONTHLY',
+    this.feeType = 'MONTHLY_FEE',
     this.coursePaymentMode,
     this.description,
     this.batchId,
@@ -64,7 +77,7 @@ class FeeStructure {
         totalAmount: num.parse(json['totalAmount'].toString()).toDouble(),
         currency: json['currency'] as String? ?? 'INR',
         status: json['status'] as String,
-        feeType: json['feeType'] as String? ?? 'MONTHLY',
+        feeType: _normalizeFeeType(json['feeType'] as String?),
         coursePaymentMode: json['coursePaymentMode'] as String?,
         batchId: json['batchId'] as String?,
         batchName: json['batch'] != null ? (json['batch']['name'] as String?) : null,

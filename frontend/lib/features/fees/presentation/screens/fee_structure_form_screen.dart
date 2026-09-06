@@ -26,8 +26,8 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _totalAmountController = TextEditingController();
-  final List<_InstallmentRow> _installments = [_InstallmentRow()];
-  String _feeType = 'MONTHLY';
+  final List<_InstallmentRow> _installments = [];
+  String _feeType = 'MONTHLY_FEE';
   String _coursePaymentMode = 'FULL';
 
   bool _isSaving = false;
@@ -63,22 +63,20 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
     if (_formKey.currentState?.validate() != true) return;
 
     final total = double.tryParse(_totalAmountController.text) ?? 0;
-    if ((_installmentsSum - total).abs() > 0.01) {
-      setState(() => _errorMessage =
-          'Installments must sum to the total amount (currently ${_installmentsSum.toStringAsFixed(2)})');
-      return;
-    }
-    if (_installments.any((r) => r.dueDate == null)) {
-      setState(() => _errorMessage = 'Every installment needs a due date');
-      return;
-    }
-    if (_feeType == 'MONTHLY' && _installments.length != 1) {
-      setState(() => _errorMessage = 'Monthly fees use one monthly payment schedule');
-      return;
-    }
-    if (_feeType == 'COURSE' && _coursePaymentMode == 'EMI' && _installments.length < 2) {
-      setState(() => _errorMessage = 'EMI requires at least two installments');
-      return;
+    if (_feeType == 'COURSE_FEE') {
+      if ((_installmentsSum - total).abs() > 0.01) {
+        setState(() => _errorMessage =
+            'Installments must sum to the total amount (currently ${_installmentsSum.toStringAsFixed(2)})');
+        return;
+      }
+      if (_installments.any((r) => r.dueDate == null)) {
+        setState(() => _errorMessage = 'Every installment needs a due date');
+        return;
+      }
+      if (_coursePaymentMode == 'EMI' && _installments.length < 2) {
+        setState(() => _errorMessage = 'EMI requires at least two installments');
+        return;
+      }
     }
 
     setState(() {
@@ -92,15 +90,17 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
             description: _descriptionController.text.trim(),
             totalAmount: total,
             feeType: _feeType,
-            coursePaymentMode: _feeType == 'COURSE' ? _coursePaymentMode : null,
-            installments: [
-              for (var i = 0; i < _installments.length; i++)
-                FeeStructureInstallmentTemplate(
-                  installmentNumber: i + 1,
-                  amount: double.parse(_installments[i]._amountController.text),
-                  dueDate: _installments[i].dueDate!,
-                ),
-            ],
+            coursePaymentMode: _feeType == 'COURSE_FEE' ? _coursePaymentMode : null,
+            installments: _feeType == 'COURSE_FEE'
+                ? [
+                    for (var i = 0; i < _installments.length; i++)
+                      FeeStructureInstallmentTemplate(
+                        installmentNumber: i + 1,
+                        amount: double.parse(_installments[i]._amountController.text),
+                        dueDate: _installments[i].dueDate!,
+                      ),
+                  ]
+                : const [],
           );
       ref.invalidate(feeStructuresProvider(null));
       if (mounted) context.pop();
@@ -130,20 +130,20 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
             const SizedBox(height: 8),
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'MONTHLY', label: Text('Monthly Fee')),
-                ButtonSegment(value: 'COURSE', label: Text('Course Fee')),
+                ButtonSegment(value: 'MONTHLY_FEE', label: Text('Monthly Fee')),
+                ButtonSegment(value: 'COURSE_FEE', label: Text('Course Fee')),
               ],
               selected: {_feeType},
               onSelectionChanged: (selection) => setState(() {
                 _feeType = selection.first;
-                if (_feeType == 'MONTHLY') {
-                  while (_installments.length > 1) {
-                    _installments.removeLast()._amountController.dispose();
-                  }
+                if (_feeType == 'MONTHLY_FEE') {
+                  _installments.clear();
+                } else if (_installments.isEmpty) {
+                  _installments.add(_InstallmentRow());
                 }
               }),
             ),
-            if (_feeType == 'COURSE') ...[
+            if (_feeType == 'COURSE_FEE') ...[
               const SizedBox(height: 12),
               Text('Payment Plan', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
@@ -159,6 +159,11 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
                     while (_installments.length > 1) {
                       _installments.removeLast()._amountController.dispose();
                     }
+                    if (_installments.isEmpty) {
+                      _installments.add(_InstallmentRow());
+                    }
+                  } else if (_installments.isEmpty) {
+                    _installments.add(_InstallmentRow());
                   }
                 }),
               ),
@@ -180,30 +185,32 @@ class _FeeStructureFormScreenState extends ConsumerState<FeeStructureFormScreen>
                 return (n == null || n <= 0) ? 'Enter a valid amount' : null;
               },
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Installments', style: Theme.of(context).textTheme.titleMedium),
-                TextButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
-                  onPressed: _feeType == 'MONTHLY' || _coursePaymentMode == 'FULL'
-                      ? null
-                      : () => setState(() => _installments.add(_InstallmentRow())),
-                ),
-              ],
-            ),
-            for (var i = 0; i < _installments.length; i++) _buildInstallmentRow(i),
-            const SizedBox(height: 8),
-            Text(
-              'Sum: ${_installmentsSum.toStringAsFixed(2)} / ${(double.tryParse(_totalAmountController.text) ?? 0).toStringAsFixed(2)}',
-              style: TextStyle(
-                color: (_installmentsSum - (double.tryParse(_totalAmountController.text) ?? 0)).abs() < 0.01
-                    ? Colors.green
-                    : Colors.orange,
+            if (_feeType == 'COURSE_FEE') ...[
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Installments', style: Theme.of(context).textTheme.titleMedium),
+                  TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                    onPressed: _coursePaymentMode == 'FULL'
+                        ? null
+                        : () => setState(() => _installments.add(_InstallmentRow())),
+                  ),
+                ],
               ),
-            ),
+              for (var i = 0; i < _installments.length; i++) _buildInstallmentRow(i),
+              const SizedBox(height: 8),
+              Text(
+                'Sum: ${_installmentsSum.toStringAsFixed(2)} / ${(double.tryParse(_totalAmountController.text) ?? 0).toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: (_installmentsSum - (double.tryParse(_totalAmountController.text) ?? 0)).abs() < 0.01
+                      ? Colors.green
+                      : Colors.orange,
+                ),
+              ),
+            ],
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
               Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

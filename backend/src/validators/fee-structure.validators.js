@@ -1,6 +1,12 @@
 const { z } = require('zod');
 const { Prisma } = require('@prisma/client');
-const { FEE_STRUCTURE_STATUS, FEE_TYPE, COURSE_PAYMENT_MODE } = require('../constants/roles');
+const {
+  FEE_STRUCTURE_STATUS,
+  FEE_TYPE,
+  COURSE_PAYMENT_MODE,
+  normalizeFeeType,
+  normalizeCoursePaymentMode,
+} = require('../constants/roles');
 
 const dateOnlyString = z
   .string()
@@ -25,6 +31,16 @@ const installmentTemplateSchema = z.object({
   dueDate: dateOnlyString,
 });
 
+const feeTypeSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? normalizeFeeType(value) : value),
+  z.enum([FEE_TYPE.MONTHLY_FEE, FEE_TYPE.COURSE_FEE]),
+);
+
+const coursePaymentModeSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? normalizeCoursePaymentMode(value) : value),
+  z.enum([COURSE_PAYMENT_MODE.FULL, COURSE_PAYMENT_MODE.EMI]).optional(),
+);
+
 const createFeeStructureSchema = z
   .object({
     name: z.string().min(1, 'Fee structure name is required'),
@@ -32,37 +48,58 @@ const createFeeStructureSchema = z
     totalAmount: decimalString,
     currency: z.string().min(1).optional(),
     batchId: z.string().uuid('Invalid batch id').optional(),
-    feeType: z.enum([FEE_TYPE.MONTHLY, FEE_TYPE.COURSE]).default(FEE_TYPE.MONTHLY),
-    coursePaymentMode: z
-      .enum([COURSE_PAYMENT_MODE.FULL, COURSE_PAYMENT_MODE.EMI])
-      .optional(),
-    installments: z
-      .array(installmentTemplateSchema)
-      .min(1, 'At least one installment is required'),
+    feeType: feeTypeSchema.default(FEE_TYPE.MONTHLY_FEE),
+    coursePaymentMode: coursePaymentModeSchema,
+    installments: z.array(installmentTemplateSchema).optional(),
   })
   .superRefine((data, ctx) => {
-    const sum = data.installments.reduce(
-      (acc, i) => acc.plus(new Prisma.Decimal(i.amount)),
-      new Prisma.Decimal(0),
-    );
-    if (!sum.equals(new Prisma.Decimal(data.totalAmount))) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Installment amounts must sum to the total amount', path: ['installments'] });
+    const feeType = normalizeFeeType(data.feeType);
+    const installments = data.installments ?? [];
+    const numberSet = new Set();
+    for (const item of installments) {
+      if (numberSet.has(item.installmentNumber)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Installment numbers must be unique', path: ['installments'] });
+        break;
+      }
+      numberSet.add(item.installmentNumber);
     }
-    const numbers = data.installments.map((i) => i.installmentNumber);
-    if (new Set(numbers).size !== numbers.length) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Installment numbers must be unique', path: ['installments'] });
+
+    if (feeType === FEE_TYPE.COURSE_FEE) {
+      if (!data.coursePaymentMode) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coursePaymentMode is required for COURSE fees', path: ['coursePaymentMode'] });
+      }
+      if (installments.length === 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'At least one installment is required for COURSE fees', path: ['installments'] });
+      }
+      if (data.coursePaymentMode === COURSE_PAYMENT_MODE.FULL && installments.length !== 1) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'COURSE FULL fees require exactly one installment', path: ['installments'] });
+      }
+      if (data.coursePaymentMode === COURSE_PAYMENT_MODE.EMI && installments.length < 2) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'COURSE EMI fees require at least two installments', path: ['installments'] });
+      }
+      if (installments.length > 0) {
+        const sum = installments.reduce(
+          (acc, i) => acc.plus(new Prisma.Decimal(i.amount)),
+          new Prisma.Decimal(0),
+        );
+        if (!sum.equals(new Prisma.Decimal(data.totalAmount))) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Installment amounts must sum to the total amount', path: ['installments'] });
+        }
+      }
+      return;
     }
-    if (data.feeType === FEE_TYPE.COURSE && !data.coursePaymentMode) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coursePaymentMode is required for COURSE fees', path: ['coursePaymentMode'] });
-    }
-    if (data.feeType === FEE_TYPE.MONTHLY && data.coursePaymentMode) {
+
+    if (data.coursePaymentMode) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coursePaymentMode is only valid for COURSE fees', path: ['coursePaymentMode'] });
     }
-    if (data.feeType === FEE_TYPE.COURSE && data.coursePaymentMode === COURSE_PAYMENT_MODE.FULL && data.installments.length !== 1) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'COURSE FULL fees require exactly one installment', path: ['installments'] });
-    }
-    if (data.feeType === FEE_TYPE.COURSE && data.coursePaymentMode === COURSE_PAYMENT_MODE.EMI && data.installments.length < 2) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'COURSE EMI fees require at least two installments', path: ['installments'] });
+    if (installments.length > 0) {
+      const sum = installments.reduce(
+        (acc, i) => acc.plus(new Prisma.Decimal(i.amount)),
+        new Prisma.Decimal(0),
+      );
+      if (!sum.equals(new Prisma.Decimal(data.totalAmount))) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Installment amounts must sum to the total amount', path: ['installments'] });
+      }
     }
   });
 
