@@ -35,11 +35,17 @@ class _FakeInstitutesRepository implements InstitutesRepository {
 
 class _FakeAuthRepository implements AuthRepository {
   @override
-  Future<AuthSession> loginInstitute({required String instituteCode, required String password}) => throw UnimplementedError();
+  Future<AuthSession> loginInstitute(
+          {required String instituteCode, required String password}) =>
+      throw UnimplementedError();
   @override
-  Future<AuthSession> loginSuperAdmin({required String email, required String password}) => throw UnimplementedError();
+  Future<AuthSession> loginSuperAdmin(
+          {required String email, required String password}) =>
+      throw UnimplementedError();
   @override
-  Future<AuthSession> loginTeacher({required String email, required String password}) => throw UnimplementedError();
+  Future<AuthSession> loginTeacher(
+          {required String email, required String password}) =>
+      throw UnimplementedError();
   @override
   Future<void> logout() async {}
   @override
@@ -49,8 +55,10 @@ class _FakeAuthRepository implements AuthRepository {
 void main() {
   Widget harness(Widget child, {AuthController? auth}) => ProviderScope(
         overrides: [
-          institutesProvider.overrideWith((ref) => InstitutesNotifier(_FakeInstitutesRepository())),
-          authControllerProvider.overrideWith((ref) => auth ?? AuthController(_FakeAuthRepository())),
+          institutesProvider.overrideWith(
+              (ref) => InstitutesNotifier(_FakeInstitutesRepository())),
+          authControllerProvider.overrideWith(
+              (ref) => auth ?? AuthController(_FakeAuthRepository())),
         ],
         child: MaterialApp(home: child),
       );
@@ -62,26 +70,34 @@ void main() {
       AuthUser(id: '1', name: 'Admin', role: 'INSTITUTE_ADMIN'),
     );
     await tester.pump();
-    expect(find.text('Signed in as Admin\nRole: INSTITUTE_ADMIN'), findsOneWidget);
+    expect(
+        find.text('Signed in as Admin\nRole: INSTITUTE_ADMIN'), findsOneWidget);
     expect(find.text('Students'), findsOneWidget);
     expect(find.text('Parents'), findsOneWidget);
     expect(find.text('Teachers'), findsOneWidget);
     expect(find.text('Batches'), findsOneWidget);
-    expect(find.text('Courses'), findsOneWidget);
-    expect(find.text('Subjects'), findsOneWidget);
+    expect(find.text('Attendance History'), findsOneWidget);
+    expect(find.text('Tests'), findsOneWidget);
+    expect(find.text('Fees'), findsOneWidget);
   });
 
-  testWidgets('super admin home renders institute dashboard', (tester) async {
+  testWidgets('teacher home renders teacher modules and hides admin-only cards',
+      (tester) async {
     final auth = AuthController(_FakeAuthRepository());
     await tester.pumpWidget(harness(const HomeScreen(), auth: auth));
     auth.state = const AuthState.authenticated(
-      AuthUser(id: '1', name: 'Admin', role: 'SUPER_ADMIN'),
+      AuthUser(id: '2', name: 'Teacher Jane', role: 'TEACHER'),
     );
     await tester.pump();
-    expect(find.text('Super Admin Dashboard'), findsOneWidget);
-    expect(find.text('Total Institutes'), findsOneWidget);
-    expect(find.text('Create Institute'), findsOneWidget);
+    expect(
+        find.text('Signed in as Teacher Jane\nRole: TEACHER'), findsOneWidget);
+    expect(find.text('My Batches'), findsOneWidget);
+    expect(find.text('Attendance History'), findsOneWidget);
+    expect(find.text('My Tests'), findsOneWidget);
     expect(find.text('Students'), findsNothing);
+    expect(find.text('Parents'), findsNothing);
+    expect(find.text('Teachers'), findsNothing);
+    expect(find.text('Fees'), findsNothing);
   });
 
   testWidgets('institutes screen renders empty state', (tester) async {
@@ -91,7 +107,8 @@ void main() {
     expect(find.text('Create institute'), findsOneWidget);
   });
 
-  testWidgets('create institute form validates required fields', (tester) async {
+  testWidgets('create institute form validates required fields',
+      (tester) async {
     await tester.pumpWidget(harness(const CreateInstituteScreen()));
     await tester.tap(find.text('Create institute'));
     await tester.pump();

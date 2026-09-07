@@ -6,9 +6,40 @@ const decimalString = z.union([z.string(), z.number()]).refine((v) => !Number.is
 const positiveDecimal = decimalString.refine((v) => Number(v) > 0, 'Must be greater than zero');
 const installmentTemplateSchema = z.object({ installmentNumber: z.coerce.number().int().min(1), amount: positiveDecimal, dueDate: dateOnlyString });
 
+const monthlySubjectItemSchema = z.object({
+  subjectId: z.string().optional(),
+  subjectName: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  monthlyAmount: positiveDecimal,
+}).refine(
+  (item) => (item.subjectId && item.subjectId.trim().length > 0) ||
+    (item.subjectName && item.subjectName.trim().length > 0) ||
+    (item.name && item.name.trim().length > 0),
+  'Subject name is required',
+);
+
 const monthlyGroupSchema = z.discriminatedUnion('pricingType', [
-  z.object({ name: z.string().min(1), applicableLevel: z.string().min(1), pricingType: z.literal('COMBINED'), combinedAmount: positiveDecimal, subjects: z.array(z.any()).max(0).optional() }),
-  z.object({ name: z.string().min(1), applicableLevel: z.string().min(1), pricingType: z.literal('SUBJECT_WISE'), subjects: z.array(z.object({ subjectId: z.string().uuid(), monthlyAmount: positiveDecimal })).min(1).refine((items) => new Set(items.map((item) => item.subjectId)).size === items.length, 'Duplicate subjects are not allowed') }),
+  z.object({
+    name: z.string().min(1),
+    applicableLevel: z.string().min(1),
+    pricingType: z.literal('COMBINED'),
+    combinedAmount: positiveDecimal,
+    subjects: z.array(z.any()).max(0).optional(),
+  }),
+  z.object({
+    name: z.string().min(1),
+    applicableLevel: z.string().min(1),
+    pricingType: z.literal('SUBJECT_WISE'),
+    subjects: z.array(monthlySubjectItemSchema).min(1, 'Add at least one subject').refine(
+      (items) => {
+        const identifiers = items.map((item) =>
+          (item.subjectName || item.name || item.subjectId || '').trim().toLowerCase(),
+        );
+        return new Set(identifiers).size === items.length;
+      },
+      'Duplicate subjects are not allowed',
+    ),
+  }),
 ]);
 
 const common = { name: z.string().min(1, 'Fee structure name is required'), description: z.string().optional(), currency: z.string().min(1).optional(), batchId: z.string().uuid('Invalid batch id').optional() };

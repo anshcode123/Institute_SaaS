@@ -16,6 +16,47 @@ function monthlyGroupTotal(group) {
     : group.subjects.reduce((sum, subject) => add(sum, subject.monthlyAmount), toDecimal(0));
 }
 
+async function resolveSubjectId(tx, instituteId, subjectItem, defaultCourseName) {
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const idCandidate = (subjectItem.subjectId || '').trim();
+  if (idCandidate && isUuid.test(idCandidate)) {
+    const existing = await tx.subject.findFirst({
+      where: { id: idCandidate, instituteId },
+    });
+    if (existing) return existing.id;
+  }
+
+  const name = (subjectItem.subjectName || subjectItem.name || subjectItem.subjectId || '').trim();
+  if (!name) throw new ValidationError('Subject name is required');
+
+  const existingByName = await tx.subject.findFirst({
+    where: { instituteId, name: { equals: name, mode: 'insensitive' } },
+  });
+  if (existingByName) return existingByName.id;
+
+  let course = await tx.course.findFirst({
+    where: { instituteId },
+  });
+  if (!course) {
+    course = await tx.course.create({
+      data: {
+        instituteId,
+        name: defaultCourseName || 'General Academic Course',
+        description: 'Default curriculum course',
+      },
+    });
+  }
+
+  const createdSubject = await tx.subject.create({
+    data: {
+      instituteId,
+      courseId: course.id,
+      name,
+    },
+  });
+  return createdSubject.id;
+}
+
 async function createFeeStructure(instituteId, actorUserId, data) {
   if (data.batchId) await findOwnedOrThrow(prisma.batch, data.batchId, instituteId, 'Batch not found');
   if (data.feeType === 'COURSE') {
@@ -23,12 +64,6 @@ async function createFeeStructure(instituteId, actorUserId, data) {
     if (data.coursePaymentMode === 'EMI') {
       const sum = data.installments.reduce((acc, item) => add(acc, item.amount), toDecimal(0));
       if (!sum.equals(toDecimal(data.totalAmount))) throw new ValidationError('EMI amounts must sum to the final payable amount');
-    }
-  } else {
-    const subjectIds = data.monthlyGroups.flatMap((group) => group.subjects?.map((subject) => subject.subjectId) ?? []);
-    if (subjectIds.length) {
-      const count = await prisma.subject.count({ where: { id: { in: subjectIds }, instituteId } });
-      if (count !== subjectIds.length) throw new ValidationError('One or more subjects are invalid for this institute');
     }
   }
 
@@ -51,8 +86,27 @@ async function createFeeStructure(instituteId, actorUserId, data) {
     }
     if (data.feeType === 'MONTHLY') {
       for (const group of data.monthlyGroups) {
-        const savedGroup = await tx.monthlyFeeGroup.create({ data: { feeStructureId: created.id, name: group.name, applicableLevel: group.applicableLevel, pricingType: group.pricingType, combinedAmount: group.pricingType === 'COMBINED' ? group.combinedAmount : null } });
-        if (group.pricingType === 'SUBJECT_WISE') await tx.monthlyFeeGroupSubject.createMany({ data: group.subjects.map((subject) => ({ monthlyFeeGroupId: savedGroup.id, subjectId: subject.subjectId, monthlyAmount: subject.monthlyAmount })) });
+        const savedGroup = await tx.monthlyFeeGroup.create({
+          data: {
+            feeStructureId: created.id,
+            name: group.name,
+            applicableLevel: group.applicableLevel,
+            pricingType: group.pricingType,
+            combinedAmount: group.pricingType === 'COMBINED' ? group.combinedAmount : null,
+          },
+        });
+        if (group.pricingType === 'SUBJECT_WISE') {
+          for (const item of group.subjects) {
+            const subjectId = await resolveSubjectId(tx, instituteId, item, group.applicableLevel);
+            await tx.monthlyFeeGroupSubject.create({
+              data: {
+                monthlyFeeGroupId: savedGroup.id,
+                subjectId,
+                monthlyAmount: item.monthlyAmount,
+              },
+            });
+          }
+        }
       }
     }
     return created.id;

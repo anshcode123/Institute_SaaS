@@ -32,20 +32,23 @@ class FeeStructuresListScreen extends ConsumerWidget {
                 icon: Icons.receipt_long_outlined,
               )
             : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(feeStructuresProvider(null)),
+                onRefresh: () async =>
+                    ref.invalidate(feeStructuresProvider(null)),
                 child: ListView.builder(
                   padding: const EdgeInsets.only(bottom: 80, top: 8),
                   itemCount: structures.length,
                   itemBuilder: (context, index) {
                     final structure = structures[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       child: ListTile(
-                        onTap: () => context.push('/fees/structures/${structure.id}'),
+                        onTap: () =>
+                            context.push('/fees/structures/${structure.id}'),
                         title: Text(structure.name),
                         subtitle: Text(
                           '${formatCurrency(structure.totalAmount, currency: structure.currency)} • '
-                          '${structure.installments.length} installments'
+                          '${structure.feeType == 'MONTHLY' ? '${structure.monthlyGroups.length} groups' : '${structure.installments.length} installments'}'
                           '${structure.batchName != null ? ' • ${structure.batchName}' : ''}',
                         ),
                         trailing: FeeStatusChip(status: structure.status),

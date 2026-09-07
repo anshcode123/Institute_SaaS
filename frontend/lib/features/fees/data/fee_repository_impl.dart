@@ -177,8 +177,8 @@ class FeeRepositoryImpl implements FeeRepository {
       {Map<String, dynamic>? queryParameters}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParameters);
-      return (response.data as Map<String, dynamic>)['data']
-          as Map<String, dynamic>;
+      final data = (response.data as Map<String, dynamic>)['data'];
+      return data is Map<String, dynamic> ? data : <String, dynamic>{};
     } on DioException catch (e) {
       throw _toAppException(e);
     }
@@ -189,17 +189,34 @@ class FeeRepositoryImpl implements FeeRepository {
     try {
       final response = await _dio.request(path,
           data: body, options: Options(method: method));
-      return (response.data as Map<String, dynamic>)['data']
-          as Map<String, dynamic>;
+      final data = (response.data as Map<String, dynamic>)['data'];
+      return data is Map<String, dynamic> ? data : <String, dynamic>{};
     } on DioException catch (e) {
       throw _toAppException(e);
     }
   }
 
   AppException _toAppException(DioException e) {
-    final message = e.response?.data is Map
-        ? (e.response?.data['message'] as String? ?? 'Request failed')
-        : 'Request failed';
-    return AppException(message, statusCode: e.response?.statusCode);
+    if (e.response?.data is Map) {
+      final map = e.response!.data as Map<String, dynamic>;
+      final message = map['message'] as String? ?? 'Request failed';
+      final error = map['error'];
+      if (error != null) {
+        if (error is Map && error.isNotEmpty) {
+          final details = error.entries.map((entry) {
+            final val = entry.value;
+            final valStr = val is List ? val.join(', ') : val.toString();
+            return '${entry.key}: $valStr';
+          }).join('\n');
+          return AppException('$message:\n$details',
+              statusCode: e.response?.statusCode);
+        } else if (error is String && error.isNotEmpty) {
+          return AppException('$message: $error',
+              statusCode: e.response?.statusCode);
+        }
+      }
+      return AppException(message, statusCode: e.response?.statusCode);
+    }
+    return AppException('Request failed', statusCode: e.response?.statusCode);
   }
 }

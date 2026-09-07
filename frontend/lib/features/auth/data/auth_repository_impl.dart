@@ -5,22 +5,13 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../domain/auth_models.dart';
 import '../domain/auth_repository.dart';
-import 'auth_interceptor.dart';
 import 'auth_storage_keys.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({Future<void> Function()? onSessionExpired})
       : _dio = DioClient().dio {
-    // Guarded so re-creating the repository (e.g. hot reload) doesn't
-    // stack duplicate interceptors on the shared Dio singleton.
-    final alreadyAttached = _dio.interceptors.any((i) => i is AuthInterceptor);
-    if (!alreadyAttached) {
-      _dio.interceptors.add(
-        AuthInterceptor(
-          dio: _dio,
-          onSessionExpired: onSessionExpired ?? () async => logout(),
-        ),
-      );
+    if (onSessionExpired != null) {
+      DioClient().onSessionExpired = onSessionExpired;
     }
   }
 

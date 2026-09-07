@@ -95,21 +95,32 @@ class FeeStructure {
 }
 
 class MonthlyFeeGroupSubject {
-  final String subjectId;
+  final String? subjectId;
   final String? subjectName;
   final double monthlyAmount;
-  const MonthlyFeeGroupSubject(
-      {required this.subjectId, required this.monthlyAmount, this.subjectName});
+
+  const MonthlyFeeGroupSubject({
+    this.subjectId,
+    this.subjectName,
+    required this.monthlyAmount,
+  });
+
+  String get displayName => subjectName ?? subjectId ?? 'Subject';
+
   factory MonthlyFeeGroupSubject.fromJson(Map<String, dynamic> json) =>
       MonthlyFeeGroupSubject(
-        subjectId: json['subjectId'] as String,
+        subjectId: json['subjectId'] as String?,
         subjectName:
-            (json['subject'] as Map<String, dynamic>?)?['name'] as String?,
+            (json['subject'] as Map<String, dynamic>?)?['name'] as String? ??
+                json['subjectName'] as String?,
         monthlyAmount: num.parse(json['monthlyAmount'].toString()).toDouble(),
       );
+
   Map<String, dynamic> toJson() => {
-        'subjectId': subjectId,
-        'monthlyAmount': monthlyAmount.toStringAsFixed(2)
+        if (subjectId != null && subjectId!.isNotEmpty) 'subjectId': subjectId,
+        if (subjectName != null && subjectName!.isNotEmpty)
+          'subjectName': subjectName,
+        'monthlyAmount': monthlyAmount.toStringAsFixed(2),
       };
 }
 

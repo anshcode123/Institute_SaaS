@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../batches/presentation/providers/batch_providers.dart';
 import '../../domain/fee_models.dart';
 import '../providers/fee_providers.dart';
 
@@ -24,7 +25,7 @@ class _Group {
 }
 
 class _SubjectPrice {
-  final id = TextEditingController();
+  final name = TextEditingController();
   final amount = TextEditingController();
 }
 
@@ -37,6 +38,9 @@ class FeeStructureFormScreen extends ConsumerStatefulWidget {
 
 class _FeeStructureFormScreenState
     extends ConsumerState<FeeStructureFormScreen> {
+  static final _uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _description = TextEditingController();
@@ -44,6 +48,7 @@ class _FeeStructureFormScreenState
   final _total = TextEditingController();
   final _dueDay = TextEditingController(text: '5');
   final _lateFee = TextEditingController(text: '0');
+  String? _selectedBatchId;
   _FeeType _type = _FeeType.monthly;
   bool _emi = false;
   bool _saving = false;
@@ -94,6 +99,7 @@ class _FeeStructureFormScreenState
       await ref.read(feeRepositoryProvider).createFeeStructure(
             name: _name.text.trim(),
             description: _description.text.trim(),
+            batchId: _selectedBatchId,
             feeType: _type == _FeeType.monthly ? 'MONTHLY' : 'COURSE',
             totalAmount:
                 _type == _FeeType.course ? double.parse(_total.text) : null,
@@ -118,7 +124,7 @@ class _FeeStructureFormScreenState
                         subjects: group.pricing == _Pricing.subjectWise
                             ? group.subjects
                                 .map((row) => MonthlyFeeGroupSubject(
-                                    subjectId: row.id.text.trim(),
+                                    subjectName: row.name.text.trim(),
                                     monthlyAmount:
                                         double.parse(row.amount.text)))
                                 .toList()
@@ -146,43 +152,85 @@ class _FeeStructureFormScreenState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final asyncBatches = ref.watch(batchListControllerProvider);
+
+    return Scaffold(
       appBar: AppBar(title: const Text('Create Fee Structure')),
       body: Form(
-          key: _form,
-          child: ListView(padding: const EdgeInsets.all(16), children: [
-            SegmentedButton<_FeeType>(segments: const [
-              ButtonSegment(
-                  value: _FeeType.monthly, label: Text('Monthly Fee')),
-              ButtonSegment(value: _FeeType.course, label: Text('Course Fee'))
-            ], selected: {
-              _type
-            }, onSelectionChanged: (v) => setState(() => _type = v.first)),
+        key: _form,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            SegmentedButton<_FeeType>(
+              segments: const [
+                ButtonSegment(
+                    value: _FeeType.monthly, label: Text('Monthly Fee')),
+                ButtonSegment(value: _FeeType.course, label: Text('Course Fee'))
+              ],
+              selected: {_type},
+              onSelectionChanged: (v) => setState(() => _type = v.first),
+            ),
             const SizedBox(height: 16),
             TextFormField(
-                controller: _name,
-                decoration: const InputDecoration(
-                    labelText: 'Fee name', border: OutlineInputBorder()),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null),
+              controller: _name,
+              decoration: const InputDecoration(
+                  labelText: 'Fee name', border: OutlineInputBorder()),
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
             TextFormField(
-                controller: _description,
-                decoration: const InputDecoration(
-                    labelText: 'Description', border: OutlineInputBorder())),
+              controller: _description,
+              decoration: const InputDecoration(
+                  labelText: 'Description', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String?>(
+              initialValue: _selectedBatchId,
+              decoration: const InputDecoration(
+                labelText: 'Batch (Optional)',
+                border: OutlineInputBorder(),
+                helperText:
+                    'Optionally link this fee structure to a specific batch',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('All Batches / General'),
+                ),
+                ...asyncBatches.items.map(
+                  (b) => DropdownMenuItem<String?>(
+                    value: b.id,
+                    child: Text(b.name),
+                  ),
+                ),
+              ],
+              onChanged: (value) => setState(() => _selectedBatchId = value),
+            ),
             const SizedBox(height: 16),
             if (_type == _FeeType.monthly) ...[_monthly()] else ...[_course()],
             if (_error != null)
               Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(_error!,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error))),
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
             const SizedBox(height: 24),
             FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: Text(_saving ? 'Creating...' : 'Create Fee Structure'))
-          ])));
+              onPressed: _saving ? null : _submit,
+              child: Text(_saving ? 'Creating...' : 'Create Fee Structure'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _monthly() =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         TextFormField(
@@ -212,15 +260,32 @@ class _FeeStructureFormScreenState
             icon: const Icon(Icons.add),
             label: const Text('Add Fee Group'))
       ]);
+
   Widget _group(_Group group) => Card(
       child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(children: [
-            TextFormField(
-                controller: group.name,
-                decoration: const InputDecoration(
-                    labelText: 'Group name', border: OutlineInputBorder()),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                      controller: group.name,
+                      decoration: const InputDecoration(
+                          labelText: 'Group name',
+                          border: OutlineInputBorder()),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null),
+                ),
+                if (_groups.length > 1) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Remove group',
+                    onPressed: () => setState(() => _groups.remove(group)),
+                  ),
+                ],
+              ],
+            ),
             const SizedBox(height: 8),
             TextFormField(
                 controller: group.level,
@@ -253,38 +318,77 @@ class _FeeStructureFormScreenState
                   validator: (v) =>
                       (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Required' : null)
             else ...[
-              for (final subject in group.subjects)
-                Row(children: [
-                  Expanded(
-                      child: TextFormField(
-                          controller: subject.id,
+              for (int i = 0; i < group.subjects.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: group.subjects[i].name,
                           decoration: const InputDecoration(
-                              labelText: 'Existing Subject ID'),
+                            labelText: 'Subject name',
+                            border: OutlineInputBorder(),
+                          ),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Required' : null)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: TextFormField(
-                          controller: subject.amount,
-                          decoration:
-                              const InputDecoration(labelText: 'Monthly ₹'),
-                          keyboardType: TextInputType.number,
+                              v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextFormField(
+                          controller: group.subjects[i].amount,
+                          decoration: const InputDecoration(
+                            labelText: 'Monthly ₹',
+                            prefixText: '₹ ',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
                           validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0
                               ? 'Required'
-                              : null))
-                ]),
-              TextButton(
+                              : null,
+                        ),
+                      ),
+                      if (group.subjects.length > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            tooltip: 'Remove subject',
+                            onPressed: () =>
+                                setState(() => group.subjects.removeAt(i)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              TextButton.icon(
                   onPressed: () =>
                       setState(() => group.subjects.add(_SubjectPrice())),
-                  child: const Text('Add subject'))
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add subject'))
             ]
           ])));
+
   Widget _course() => Column(children: [
         TextFormField(
-            controller: _courseId,
-            decoration: const InputDecoration(
-                labelText: 'Existing Course ID', border: OutlineInputBorder()),
-            validator: (v) => v == null || v.isEmpty ? 'Required' : null),
+          controller: _courseId,
+          decoration: const InputDecoration(
+            labelText: 'Course ID (UUID)',
+            helperText: 'Existing Course UUID in institute',
+            border: OutlineInputBorder(),
+          ),
+          validator: (v) {
+            final val = v?.trim() ?? '';
+            if (val.isEmpty) return 'Required';
+            if (!_uuidRegex.hasMatch(val)) {
+              return 'Must be a valid UUID';
+            }
+            return null;
+          },
+        ),
         const SizedBox(height: 12),
         TextFormField(
             controller: _total,
