@@ -57,6 +57,25 @@ import '../../features/tests/presentation/screens/test_detail_screen.dart';
 import '../../features/tests/presentation/screens/test_form_screen.dart';
 import '../../features/tests/presentation/screens/test_results_screen.dart';
 import '../../features/tests/presentation/screens/tests_list_screen.dart';
+import '../../features/institutes/domain/institute.dart';
+import '../../features/institutes/presentation/screens/institutes_screen.dart';
+import '../../features/institutes/presentation/screens/create_institute_screen.dart';
+import '../../features/institutes/presentation/screens/institute_details_screen.dart';
+
+String defaultLocationForRole(String? role) {
+  switch (role) {
+    case 'SUPER_ADMIN':
+      return '/institutes';
+    case 'STUDENT':
+      return '/student/dashboard';
+    case 'PARENT':
+      return '/parent/children';
+    case 'TEACHER':
+    case 'INSTITUTE_ADMIN':
+    default:
+      return '/home';
+  }
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -76,13 +95,71 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      if (!authState.isAuthenticated && !loggingIn) return '/';
-      if (authState.isAuthenticated && loggingIn) {
-        final role = authState.user?.role;
-        if (role == 'STUDENT') return '/student/dashboard';
-        if (role == 'PARENT') return '/parent/children';
-        return '/home';
+      if (!authState.isAuthenticated) {
+        if (!loggingIn) return '/';
+        return null;
       }
+
+      final role = authState.user?.role;
+      final defaultLoc = defaultLocationForRole(role);
+
+      // Authenticated user attempting to access login screens
+      if (loggingIn) {
+        return defaultLoc;
+      }
+
+      final path = state.matchedLocation;
+
+      // Super Admin routes: only SUPER_ADMIN
+      if (path.startsWith('/institutes')) {
+        if (role != 'SUPER_ADMIN') return defaultLoc;
+        return null;
+      }
+
+      // Student portal routes: only STUDENT
+      if (path == '/student' || path.startsWith('/student/')) {
+        if (role != 'STUDENT') return defaultLoc;
+        return null;
+      }
+
+      // Parent portal routes: only PARENT
+      if (path == '/parent' || path.startsWith('/parent/')) {
+        if (role != 'PARENT') return defaultLoc;
+        return null;
+      }
+
+      // Notifications: all authenticated roles allowed
+      if (path == '/notifications') {
+        return null;
+      }
+
+      // Institute-Admin-only routes (Teacher/Student/Parent blocked)
+      if (path.startsWith('/students') ||
+          path.startsWith('/parents') ||
+          path.startsWith('/teachers') ||
+          path.startsWith('/fees') ||
+          path.startsWith('/payments') ||
+          path.startsWith('/receipts')) {
+        if (role != 'INSTITUTE_ADMIN') return defaultLoc;
+        return null;
+      }
+
+      // Teacher & Institute-Admin shared routes: Batches, Attendance, Tests
+      if (path.startsWith('/batches') ||
+          path.startsWith('/attendance') ||
+          path.startsWith('/tests')) {
+        if (role != 'INSTITUTE_ADMIN' && role != 'TEACHER') return defaultLoc;
+        return null;
+      }
+
+      // Home route: redirect roles with dedicated portals to their portals
+      if (path == '/home') {
+        if (role == 'SUPER_ADMIN' || role == 'STUDENT' || role == 'PARENT') {
+          return defaultLoc;
+        }
+        return null;
+      }
+
       return null;
     },
     routes: [
@@ -105,6 +182,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ParentLoginScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+
+      // Super Admin
+      GoRoute(
+        path: '/institutes',
+        builder: (context, state) => const InstitutesScreen(),
+      ),
+      GoRoute(
+        path: '/institutes/create',
+        builder: (context, state) => const CreateInstituteScreen(),
+      ),
+      GoRoute(
+        path: '/institutes/:id',
+        builder: (context, state) {
+          final institute = state.extra as Institute?;
+          if (institute != null) {
+            return InstituteDetailsScreen(institute: institute);
+          }
+          return const InstitutesScreen();
+        },
+      ),
 
       // Notifications
       GoRoute(

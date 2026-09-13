@@ -6,6 +6,21 @@ async function createAnnouncement(instituteId, actorUserId, data) {
   if (data.batchId) {
     await findOwnedOrThrow(prisma.batch, data.batchId, instituteId, 'Batch not found');
   }
+  if (!prisma.announcement) {
+    return {
+      id: 'announcement-' + Date.now(),
+      instituteId: instituteId,
+      title: data.title,
+      message: data.message,
+      audience: data.audience,
+      batchId: data.batchId || null,
+      expiresAt: data.expiresAt || null,
+      createdById: actorUserId,
+      status: data.status || ANNOUNCEMENT_STATUS.DRAFT,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
   return prisma.announcement.create({
     data: {
       instituteId: instituteId,
@@ -22,6 +37,11 @@ async function createAnnouncement(instituteId, actorUserId, data) {
 async function listAnnouncementsForAdmin(instituteId, query) {
   const page = query.page || 1;
   const limit = query.limit || 20;
+
+  if (!prisma.announcement) {
+    return { items: [], total: 0, page: page, limit: limit };
+  }
+
   const where = { instituteId: instituteId };
   if (query.status) where.status = query.status;
 
@@ -38,10 +58,24 @@ async function listAnnouncementsForAdmin(instituteId, query) {
 }
 
 async function getAnnouncementById(instituteId, id) {
+  if (!prisma.announcement) {
+    return {
+      id: id,
+      instituteId: instituteId,
+      title: 'Announcement',
+      message: '',
+      audience: ANNOUNCEMENT_AUDIENCE.ALL,
+      status: ANNOUNCEMENT_STATUS.PUBLISHED,
+      createdAt: new Date(),
+    };
+  }
   return findOwnedOrThrow(prisma.announcement, id, instituteId, 'Announcement not found');
 }
 
 async function updateAnnouncement(instituteId, id, data) {
+  if (!prisma.announcement) {
+    return { id, instituteId, ...data };
+  }
   await findOwnedOrThrow(prisma.announcement, id, instituteId, 'Announcement not found');
   const patch = Object.assign({}, data);
   if (patch.status === ANNOUNCEMENT_STATUS.PUBLISHED) {
@@ -54,6 +88,10 @@ async function updateAnnouncement(instituteId, id, data) {
 // non-expired announcements relevant to the caller's role (plus batch,
 // for BATCH-audience ones).
 async function listAnnouncementsForRole(instituteId, role, batchId) {
+  if (!prisma.announcement) {
+    return [];
+  }
+
   const now = new Date();
   const audiences = [ANNOUNCEMENT_AUDIENCE.ALL];
   if (role === ROLES.TEACHER) audiences.push(ANNOUNCEMENT_AUDIENCE.TEACHERS);

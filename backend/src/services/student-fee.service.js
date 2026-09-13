@@ -129,50 +129,144 @@ async function assignFee(instituteId, actorUserId, data) {
   return getStudentFeeById(instituteId, created.id);
 }
 
+function getNextOutstandingInstallment(installments) {
+  if (!installments || installments.length === 0) return null;
+  const unpaid = installments.filter((i) => {
+    const status = deriveInstallmentStatus(i);
+    return status !== 'PAID' && status !== 'CANCELLED';
+  });
+  if (unpaid.length === 0) return null;
+  unpaid.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  return unpaid[0];
+}
+
+function getDueStatusText(dueDate, isPaidOrCancelled) {
+  if (isPaidOrCancelled || !dueDate) return null;
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const due = new Date(dueDate);
+  const dueUtc = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+  const diffDays = Math.round((dueUtc - todayUtc) / (24 * 60 * 60 * 1000));
+
+  const dayStr = due.toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+  if (diffDays < 0) {
+    return `Overdue (${dayStr})`;
+  } else if (diffDays === 0) {
+    return 'Due TODAY';
+  } else if (diffDays === 1) {
+    return 'Due TOMORROW';
+  } else {
+    return `Due ${dayStr}`;
+  }
+}
+
+function calculateUrgencyScore(item) {
+  const derivedStatus = item.status;
+  if (derivedStatus === 'PAID' || derivedStatus === 'CANCELLED') {
+    return { urgencyRank: 4, dueTimestamp: Infinity };
+  }
+
+  const nextInstallment = getNextOutstandingInstallment(item.installments);
+  if (!nextInstallment || !nextInstallment.dueDate) {
+    return { urgencyRank: 4, dueTimestamp: Infinity };
+  }
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const due = new Date(nextInstallment.dueDate);
+  const dueUtc = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+  const diffDays = Math.round((dueUtc - todayUtc) / (24 * 60 * 60 * 1000));
+
+  if (diffDays < 0) {
+    // Overdue - rank 1, earlier overdue first
+    return { urgencyRank: 1, dueTimestamp: dueUtc };
+  } else if (diffDays === 0) {
+    // Due Today - rank 2
+    return { urgencyRank: 2, dueTimestamp: dueUtc };
+  } else {
+    // Upcoming - rank 3, nearest first
+    return { urgencyRank: 3, dueTimestamp: dueUtc };
+  }
+}
+
+function compareFeeUrgency(a, b) {
+  const scoreA = calculateUrgencyScore(a);
+  const scoreB = calculateUrgencyScore(b);
+
+  if (scoreA.urgencyRank !== scoreB.urgencyRank) {
+    return scoreA.urgencyRank - scoreB.urgencyRank;
+  }
+  if (scoreA.dueTimestamp !== scoreB.dueTimestamp) {
+    return scoreA.dueTimestamp - scoreB.dueTimestamp;
+  }
+
+  // Secondary sort: Student name (firstName + lastName) case-insensitive ascending
+  const nameA = ((a.student?.firstName || '') + ' ' + (a.student?.lastName || '')).trim().toLowerCase();
+  const nameB = ((b.student?.firstName || '') + ' ' + (b.student?.lastName || '')).trim().toLowerCase();
+  if (nameA !== nameB) {
+    return nameA.localeCompare(nameB);
+  }
+  return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+}
+
 function serializeStudentFee(studentFee) {
-  const installments = studentFee.installments.map((i) => ({
+  const installments = (studentFee.installments || []).map((i) => ({
     ...i,
     status: deriveInstallmentStatus(i),
   }));
+  const derivedStatus = deriveStudentFeeStatus(studentFee, studentFee.installments || []);
+  const nextInstallment = derivedStatus !== 'PAID' && derivedStatus !== 'CANCELLED'
+    ? getNextOutstandingInstallment(installments)
+    : null;
+  const nextDueDate = nextInstallment ? nextInstallment.dueDate : null;
+  const dueStatusText = getDueStatusText(nextDueDate, derivedStatus === 'PAID' || derivedStatus === 'CANCELLED');
+
   return {
     ...studentFee,
-    status: deriveStudentFeeStatus(studentFee, studentFee.installments),
+    status: derivedStatus,
     installments,
+    nextDueDate,
+    dueStatusText,
   };
 }
 
-async function listStudentFees(instituteId, query) {
-  const { studentId, status, page = 1, limit = 20 } = query;
+async function listStudentFees(instituteId, query = {}) {
+  const { studentId, status } = query;
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
 
   const where = {
     instituteId,
     ...(studentId ? { studentId } : {}),
   };
 
-  const [rows, total] = await Promise.all([
-    prisma.studentFee.findMany({
-      where,
-      include: {
-        installments: { orderBy: { installmentNumber: 'asc' } },
-        student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
-        feeStructure: { select: { id: true, name: true, currency: true, feeType: true } },
-        monthlyFeeGroup: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.studentFee.count({ where }),
-  ]);
+  const rows = await prisma.studentFee.findMany({
+    where,
+    include: {
+      installments: { orderBy: { installmentNumber: 'asc' } },
+      student: { select: { id: true, firstName: true, lastName: true, studentCode: true } },
+      feeStructure: { select: { id: true, name: true, currency: true, feeType: true } },
+      monthlyFeeGroup: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
   let items = rows.map(serializeStudentFee);
+
   // OVERDUE is derived, so a status=OVERDUE filter is applied after
   // fetching rather than in the SQL WHERE clause.
   if (status) {
     items = items.filter((i) => i.status === status);
   }
 
-  return { items, total, page, limit };
+  // Sort by urgency: Overdue -> Due Today -> Nearest Upcoming -> Later Upcoming -> Paid/None
+  items.sort(compareFeeUrgency);
+
+  const total = items.length;
+  const paginatedItems = items.slice((page - 1) * limit, page * limit);
+
+  return { items: paginatedItems, total, page, limit };
 }
 
 async function getStudentFeeById(instituteId, id) {

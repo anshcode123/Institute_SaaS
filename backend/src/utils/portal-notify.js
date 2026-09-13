@@ -44,4 +44,28 @@ async function notifyStudentAndParents(instituteId, studentId, data) {
   }
 }
 
-module.exports = { notifyStudentAndParents };
+async function notifyParentsOnly(instituteId, studentId, data) {
+  try {
+    const links = await prisma.studentParent.findMany({
+      where: { studentId: studentId },
+      include: { parent: { select: { email: true } } },
+    });
+
+    for (let i = 0; i < links.length; i++) {
+      const parent = links[i].parent;
+      if (parent && parent.email) {
+        const parentUser = await prisma.user.findFirst({
+          where: { instituteId: instituteId, email: parent.email, role: 'PARENT' },
+          select: { id: true },
+        });
+        if (parentUser) {
+          await notifySafely(instituteId, parentUser.id, data);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[portal-notify] Failed to notify parents', err);
+  }
+}
+
+module.exports = { notifyStudentAndParents, notifyParentsOnly };

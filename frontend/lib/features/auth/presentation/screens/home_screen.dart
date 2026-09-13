@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/theme_toggle.dart';
 import '../providers/auth_providers.dart';
+import '../../../institutes/presentation/screens/institutes_screen.dart';
+import '../../../student_portal/presentation/screens/student_dashboard_screen.dart';
+import '../../../parent_portal/presentation/screens/children_list_screen.dart';
 
-/// Still intentionally minimal - a launcher into the Phase 3 modules
-/// rather than a real dashboard, which is a later phase.
+/// Role-aware Home Screen. Renders the appropriate portal dashboard for
+/// Super Admin, Student, Parent, Teacher, or Institute Admin.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -13,11 +16,23 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
     final user = authState.user;
-    final isTeacher = user?.role == 'TEACHER';
+    final role = user?.role;
+
+    if (role == 'SUPER_ADMIN') {
+      return const InstitutesScreen();
+    }
+    if (role == 'STUDENT') {
+      return const StudentDashboardScreen();
+    }
+    if (role == 'PARENT') {
+      return const ChildrenListScreen();
+    }
+
+    final isTeacher = role == 'TEACHER';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: Text(isTeacher ? 'Teacher Dashboard' : 'Institute Dashboard'),
         actions: [
           const ThemeToggle(),
           IconButton(

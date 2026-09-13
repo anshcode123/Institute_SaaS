@@ -64,7 +64,17 @@ async function markPresentOrReturnExisting(instituteId, { studentId, batchId, da
   }
 }
 
-const { notifyStudentAndParents } = require('../utils/portal-notify');
+const { notifyStudentAndParents, notifyParentsOnly } = require('../utils/portal-notify');
+const { hasNotification } = require('./notification.service');
+
+function formatTime(date) {
+  const d = date instanceof Date ? date : new Date(date || Date.now());
+  return d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
 
 // ---------------------------------------------------------------------
 // QR scan
@@ -109,10 +119,11 @@ async function scanAttendance(instituteId, auth, { qrToken, batchId }) {
   });
 
   if (!result.alreadyMarked) {
+    const timeStr = formatTime(result.attendance.markedAt || new Date());
     notifyStudentAndParents(instituteId, student.id, {
       type: 'ATTENDANCE',
       title: 'Attendance Marked',
-      message: `${student.firstName} ${student.lastName} was marked PRESENT for today.`,
+      message: `${student.firstName}'s attendance has been marked Present at ${timeStr}.`,
       entityType: 'ATTENDANCE',
       entityId: result.attendance.id,
     }).catch(() => { });
@@ -154,12 +165,14 @@ async function scanLeaving(instituteId, auth, { qrToken }) {
   }
 
   const leavingTime = new Date();
+  const timeStr = formatTime(leavingTime);
 
+  // Check for duplicate checkout notification for today's attendance
   notifyStudentAndParents(instituteId, student.id, {
     type: 'LEAVING',
     title: 'Leaving Recorded',
-    message: `${student.firstName} ${student.lastName} marked check-out at ${leavingTime.toLocaleTimeString()}.`,
-    entityType: 'ATTENDANCE',
+    message: `${student.firstName} has checked out from the institute at ${timeStr}.`,
+    entityType: 'ATTENDANCE_LEAVING',
     entityId: attendanceToday.id,
   }).catch(() => { });
 

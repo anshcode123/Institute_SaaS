@@ -236,6 +236,8 @@ class StudentFee {
   final String status;
   final List<FeeInstallment> installments;
   final StudentFeeStudentSummary? student;
+  final DateTime? nextDueDate;
+  final String? dueStatusText;
 
   const StudentFee({
     required this.id,
@@ -252,6 +254,8 @@ class StudentFee {
     required this.status,
     this.installments = const [],
     this.student,
+    this.nextDueDate,
+    this.dueStatusText,
   });
 
   factory StudentFee.fromJson(Map<String, dynamic> json) => StudentFee(
@@ -281,6 +285,10 @@ class StudentFee {
             ? StudentFeeStudentSummary.fromJson(
                 json['student'] as Map<String, dynamic>)
             : null,
+        nextDueDate: json['nextDueDate'] != null
+            ? DateTime.tryParse(json['nextDueDate'].toString())
+            : null,
+        dueStatusText: json['dueStatusText'] as String?,
       );
 }
 

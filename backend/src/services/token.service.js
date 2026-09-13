@@ -93,17 +93,20 @@ async function findValidRefreshTokenRecord(refreshToken) {
   return record;
 }
 async function revokeRefreshTokenRecord(recordId) {
-  await prisma.refreshToken.update({
-    where: { id: recordId },
+  return prisma.refreshToken.updateMany({
+    where: { id: recordId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
 }
 
-// Rotation: the presented refresh token is revoked and a brand new pair is
+// Rotation: the presented refresh token is revoked atomically and a brand new pair is
 // issued. If a revoked/expired token is replayed, the caller must re-login.
 async function rotateTokens(refreshToken) {
   const record = await findValidRefreshTokenRecord(refreshToken);
-  await revokeRefreshTokenRecord(record.id);
+  const updated = await revokeRefreshTokenRecord(record.id);
+  if (updated.count === 0) {
+    throw new UnauthorizedError('Refresh token is no longer valid');
+  }
   return issueTokenPair(record.user);
 }
 
