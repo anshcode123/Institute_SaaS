@@ -12,9 +12,17 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   String _dateOnly(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
   @override
-  Future<ScanResult> scan({required String qrToken, required String batchId}) async {
-    final data = await _send('POST', '/attendance/scan', {'qrToken': qrToken, 'batchId': batchId});
+  Future<ScanResult> scan({required String qrToken, String? batchId}) async {
+    final data = await _send('POST', '/attendance/scan', {
+      'qrToken': qrToken,
+      if (batchId != null && batchId.isNotEmpty) 'batchId': batchId,
+    });
     return ScanResult.fromJson(data);
+  }
+
+  @override
+  Future<Map<String, dynamic>> scanLeaving({required String qrToken}) async {
+    return _send('POST', '/attendance/scan-leaving', {'qrToken': qrToken});
   }
 
   @override
@@ -30,7 +38,9 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
         'entries': entries,
       });
       final list = (response.data as Map<String, dynamic>)['data'] as List;
-      return list.map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw _toAppException(e);
     }
@@ -61,26 +71,33 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   }
 
   @override
-  Future<BatchAttendanceSummary> batchSummary(String batchId, {DateTime? date}) async {
-    final data = await _get('/attendance/batches/$batchId/summary', queryParameters: {
+  Future<BatchAttendanceSummary> batchSummary(String batchId,
+      {DateTime? date}) async {
+    final data =
+        await _get('/attendance/batches/$batchId/summary', queryParameters: {
       if (date != null) 'date': _dateOnly(date),
     });
     return BatchAttendanceSummary.fromJson(data);
   }
 
-  Future<Map<String, dynamic>> _get(String path, {Map<String, dynamic>? queryParameters}) async {
+  Future<Map<String, dynamic>> _get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParameters);
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }
   }
 
-  Future<Map<String, dynamic>> _send(String method, String path, Map<String, dynamic>? body) async {
+  Future<Map<String, dynamic>> _send(
+      String method, String path, Map<String, dynamic>? body) async {
     try {
-      final response = await _dio.request(path, data: body, options: Options(method: method));
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      final response = await _dio.request(path,
+          data: body, options: Options(method: method));
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }

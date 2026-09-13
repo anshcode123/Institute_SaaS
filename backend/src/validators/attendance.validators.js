@@ -15,7 +15,11 @@ const dateOnlyString = z
 
 const scanAttendanceSchema = z.object({
   qrToken: z.string().min(1, 'QR token is required'),
-  batchId: z.string().uuid('Invalid batch id'),
+  batchId: z.string().uuid('Invalid batch id').optional(),
+});
+
+const scanLeavingSchema = z.object({
+  qrToken: z.string().min(1, 'QR token is required'),
 });
 
 const manualAttendanceSchema = z.object({
@@ -46,6 +50,7 @@ const batchSummaryQuerySchema = z.object({
 
 module.exports = {
   scanAttendanceSchema,
+  scanLeavingSchema,
   manualAttendanceSchema,
   listAttendanceQuerySchema,
   batchSummaryQuerySchema,

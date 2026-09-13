@@ -46,6 +46,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<AuthSession> loginStudent(
+      {required String email, required String password}) async {
+    final response = await _post(
+        '/auth/student/login', {'email': email, 'password': password});
+    return _persistSession(response);
+  }
+
+  @override
+  Future<AuthSession> loginParent(
+      {required String email, required String password}) async {
+    final response = await _post(
+        '/auth/parent/login', {'email': email, 'password': password});
+    return _persistSession(response);
+  }
+
+  @override
   Future<AuthSession?> restoreSession() async {
     final accessToken =
         await SecureStorage.instance.read(AuthStorageKeys.accessToken);

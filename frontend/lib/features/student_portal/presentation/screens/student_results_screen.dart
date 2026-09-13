@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../shared/widgets/empty_state.dart';
-import '../../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../providers/student_portal_providers.dart';
 
 /// Only ever shows published results - /student/results (the endpoint
@@ -18,10 +18,14 @@ class StudentResultsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('My Results')),
       body: asyncResults.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => ErrorState(message: 'Failed to load results', onRetry: () => ref.invalidate(_myResultsProvider)),
+        error: (err, _) => ErrorState(
+            message: 'Failed to load results',
+            onRetry: () => ref.invalidate(_myResultsProvider)),
         data: (results) {
           if (results.isEmpty) {
-            return const EmptyState(message: 'No published results yet.', icon: Icons.grade_outlined);
+            return const EmptyState(
+                message: 'No published results yet.',
+                icon: Icons.grade_outlined);
           }
           return ListView.builder(
             itemCount: results.length,
@@ -32,7 +36,10 @@ class StudentResultsScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text('${r.obtainedMarks} / ${r.totalMarks}'),
                   subtitle: Text('${r.percentage}% • Grade ${r.grade}'),
-                  trailing: Text(r.status, style: TextStyle(color: r.status == 'PASS' ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                  trailing: Text(r.status,
+                      style: TextStyle(
+                          color: r.status == 'PASS' ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold)),
                   onTap: () => context.push('/student/results/${r.id}'),
                 ),
               );

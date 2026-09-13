@@ -34,6 +34,8 @@ class Parent {
   final String? address;
   final String status;
   final List<StudentSummary> students;
+  final bool hasLogin;
+  final String? loginEmail;
 
   const Parent({
     required this.id,
@@ -43,6 +45,8 @@ class Parent {
     this.email,
     this.address,
     this.students = const [],
+    this.hasLogin = false,
+    this.loginEmail,
   });
 
   factory Parent.fromJson(Map<String, dynamic> json) {
@@ -58,6 +62,8 @@ class Parent {
               .map((e) => StudentSummary.fromJson(e as Map<String, dynamic>))
               .toList()
           : const [],
+      hasLogin: json['hasLogin'] as bool? ?? false,
+      loginEmail: json['loginEmail'] as String?,
     );
   }
 }

@@ -18,6 +18,16 @@ const teacherLogin = asyncHandler(async (req, res) => {
   sendSuccess(res, result, 'Login successful');
 });
 
+const studentLogin = asyncHandler(async (req, res) => {
+  const result = await authService.studentLogin(req.body);
+  sendSuccess(res, result, 'Login successful');
+});
+
+const parentLogin = asyncHandler(async (req, res) => {
+  const result = await authService.parentLogin(req.body);
+  sendSuccess(res, result, 'Login successful');
+});
+
 const refresh = asyncHandler(async (req, res) => {
   const tokens = await tokenService.rotateTokens(req.body.refreshToken);
   sendSuccess(res, tokens, 'Token refreshed');
@@ -28,4 +38,12 @@ const logout = asyncHandler(async (req, res) => {
   sendSuccess(res, null, 'Logged out');
 });
 
-module.exports = { superAdminLogin, instituteLogin, teacherLogin, refresh, logout };
+module.exports = {
+  superAdminLogin,
+  instituteLogin,
+  teacherLogin,
+  studentLogin,
+  parentLogin,
+  refresh,
+  logout,
+};

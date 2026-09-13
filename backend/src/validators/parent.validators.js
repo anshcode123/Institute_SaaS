@@ -19,4 +19,19 @@ const listParentsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-module.exports = { createParentSchema, updateParentSchema, listParentsQuerySchema };
+const createParentLoginSchema = z.object({
+  loginId: z.string().min(1).optional(),
+  password: z.string().min(6).optional(),
+});
+
+const resetParentPasswordSchema = z.object({
+  newPassword: z.string().min(6).optional(),
+});
+
+module.exports = {
+  createParentSchema,
+  updateParentSchema,
+  listParentsQuerySchema,
+  createParentLoginSchema,
+  resetParentPasswordSchema,
+};

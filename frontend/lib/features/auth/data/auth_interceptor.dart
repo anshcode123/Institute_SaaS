@@ -19,6 +19,8 @@ class AuthInterceptor extends Interceptor {
     '/auth/super-admin/login',
     '/auth/institute/login',
     '/auth/teacher/login',
+    '/auth/student/login',
+    '/auth/parent/login',
     '/auth/refresh',
     '/auth/logout',
   ];

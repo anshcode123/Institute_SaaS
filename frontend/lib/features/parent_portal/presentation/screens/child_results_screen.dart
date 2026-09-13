@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../shared/widgets/empty_state.dart';
-import '../../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../providers/parent_portal_providers.dart';
 
 class ChildResultsScreen extends ConsumerWidget {
@@ -16,10 +16,14 @@ class ChildResultsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Results')),
       body: asyncResults.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => ErrorState(message: 'Failed to load results', onRetry: () => ref.invalidate(_resultsProvider(studentId))),
+        error: (err, _) => ErrorState(
+            message: 'Failed to load results',
+            onRetry: () => ref.invalidate(_resultsProvider(studentId))),
         data: (results) {
           if (results.isEmpty) {
-            return const EmptyState(message: 'No published results yet.', icon: Icons.grade_outlined);
+            return const EmptyState(
+                message: 'No published results yet.',
+                icon: Icons.grade_outlined);
           }
           return ListView.builder(
             itemCount: results.length,
@@ -30,8 +34,12 @@ class ChildResultsScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text('${r.obtainedMarks} / ${r.totalMarks}'),
                   subtitle: Text('${r.percentage}% • Grade ${r.grade}'),
-                  trailing: Text(r.status, style: TextStyle(color: r.status == 'PASS' ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
-                  onTap: () => context.push('/parent/children/$studentId/results/${r.id}'),
+                  trailing: Text(r.status,
+                      style: TextStyle(
+                          color: r.status == 'PASS' ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold)),
+                  onTap: () => context
+                      .push('/parent/children/$studentId/results/${r.id}'),
                 ),
               );
             },

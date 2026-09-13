@@ -26,10 +26,22 @@ const logoutSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
+const studentLoginSchema = z.object({
+  email: z.string().min(1, 'Email or Login ID is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const parentLoginSchema = z.object({
+  email: z.string().min(1, 'Email or Login ID is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
 module.exports = {
   superAdminLoginSchema,
   instituteLoginSchema,
   teacherLoginSchema,
+  studentLoginSchema,
+  parentLoginSchema,
   refreshSchema,
   logoutSchema,
 };

@@ -47,6 +47,14 @@ class _FakeAuthRepository implements AuthRepository {
           {required String email, required String password}) =>
       throw UnimplementedError();
   @override
+  Future<AuthSession> loginStudent(
+          {required String email, required String password}) =>
+      throw UnimplementedError();
+  @override
+  Future<AuthSession> loginParent(
+          {required String email, required String password}) =>
+      throw UnimplementedError();
+  @override
   Future<void> logout() async {}
   @override
   Future<AuthSession?> restoreSession() async => null;
@@ -76,7 +84,7 @@ void main() {
     expect(find.text('Parents'), findsOneWidget);
     expect(find.text('Teachers'), findsOneWidget);
     expect(find.text('Batches'), findsOneWidget);
-    expect(find.text('Attendance History'), findsOneWidget);
+    expect(find.text('Attendance'), findsOneWidget);
     expect(find.text('Tests'), findsOneWidget);
     expect(find.text('Fees'), findsOneWidget);
   });
@@ -92,7 +100,7 @@ void main() {
     expect(
         find.text('Signed in as Teacher Jane\nRole: TEACHER'), findsOneWidget);
     expect(find.text('My Batches'), findsOneWidget);
-    expect(find.text('Attendance History'), findsOneWidget);
+    expect(find.text('Attendance'), findsOneWidget);
     expect(find.text('My Tests'), findsOneWidget);
     expect(find.text('Students'), findsNothing);
     expect(find.text('Parents'), findsNothing);

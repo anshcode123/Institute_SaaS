@@ -54,6 +54,24 @@ const assignBatch = asyncHandler(async (req, res) => {
   sendSuccess(res, student, 'Student assigned to batch');
 });
 
+const createLogin = asyncHandler(async (req, res) => {
+  const result = await studentService.createStudentLogin(
+    req.auth.instituteId,
+    req.params.id,
+    req.body || {},
+  );
+  sendSuccess(res, result, 'Student login account created', 201);
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const result = await studentService.resetStudentPassword(
+    req.auth.instituteId,
+    req.params.id,
+    req.body || {},
+  );
+  sendSuccess(res, result, 'Student password reset successfully');
+});
+
 module.exports = {
   createStudent,
   listStudents,
@@ -63,4 +81,6 @@ module.exports = {
   linkParent,
   unlinkParent,
   assignBatch,
+  createLogin,
+  resetPassword,
 };

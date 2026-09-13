@@ -6,41 +6,48 @@ import '../providers/auth_providers.dart';
 import '../providers/auth_state.dart';
 import '../widgets/login_form.dart';
 
-class TeacherLoginScreen extends ConsumerWidget {
-  const TeacherLoginScreen({super.key});
+class ParentLoginScreen extends ConsumerWidget {
+  const ParentLoginScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
 
     ref.listen(authControllerProvider, (previous, next) {
-      if (next.isAuthenticated) context.go('/home');
+      if (next.isAuthenticated) context.go('/parent/children');
     });
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Teacher Login'),
+        title: const Text('Parent Login'),
         actions: const [ThemeToggle()],
       ),
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  'Sign in to Parent Portal',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
                 LoginForm(
-                  identifierLabel: 'Email',
+                  identifierLabel: 'Email / Login ID',
                   isLoading: authState.status == AuthStatus.loading,
                   errorMessage: authState.status == AuthStatus.error
                       ? authState.errorMessage
                       : null,
                   onSubmit: (email, password) {
-                    ref
-                        .read(authControllerProvider.notifier)
-                        .loginTeacher(email: email, password: password);
+                    ref.read(authControllerProvider.notifier).loginParent(
+                          email: email,
+                          password: password,
+                        );
                   },
                 ),
                 const SizedBox(height: 16),
@@ -58,8 +65,8 @@ class TeacherLoginScreen extends ConsumerWidget {
                       child: const Text('Student Login'),
                     ),
                     TextButton(
-                      onPressed: () => context.go('/parent/login'),
-                      child: const Text('Parent Login'),
+                      onPressed: () => context.go('/teacher/login'),
+                      child: const Text('Teacher Login'),
                     ),
                     TextButton(
                       onPressed: () => context.go('/super-admin/login'),

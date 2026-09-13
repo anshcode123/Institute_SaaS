@@ -13,8 +13,13 @@ const announcementService = require('./announcement.service');
 // the entire security model of the student portal: a STUDENT-role token
 // can only ever resolve to exactly one Student row.
 async function resolveOwnStudentId(instituteId, userId) {
+  var user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.role !== 'STUDENT') {
+    throw new ForbiddenError('No student profile is linked to this account');
+  }
+
   var student = await prisma.student.findFirst({
-    where: { instituteId: instituteId, userId: userId },
+    where: { instituteId: instituteId, email: user.email },
     select: { id: true },
   });
   if (!student) {
@@ -42,9 +47,14 @@ async function getMyDashboard(instituteId, userId) {
   var publishedResults = allResults.filter(function (r) { return r.publishedAt !== null; });
   var latestResult = publishedResults.length ? publishedResults[0] : null;
 
-  var unreadCount = await prisma.notification.count({
-    where: { instituteId: instituteId, userId: userId, readAt: null },
-  });
+  var unreadCount = 0;
+  try {
+    unreadCount = await prisma.notification.count({
+      where: { instituteId: instituteId, userId: userId, readAt: null },
+    });
+  } catch (e) {
+    unreadCount = 0;
+  }
 
   return {
     student: student,
@@ -65,9 +75,12 @@ async function getMyQrCodes(instituteId, userId) {
   var studentId = await resolveOwnStudentId(instituteId, userId);
   var student = await prisma.student.findUnique({
     where: { id: studentId },
-    select: { qrCode: true, leavingQrCode: true },
+    select: { qrCode: true },
   });
-  return { attendanceQr: student.qrCode, leavingQr: student.leavingQrCode };
+  return {
+    attendanceQr: student ? student.qrCode : null,
+    leavingQr: student && student.qrCode ? 'LEAVE:' + student.qrCode : null,
+  };
 }
 
 async function getMyFees(instituteId, userId) {

@@ -84,6 +84,20 @@ const RESULT_STATUS = Object.freeze({
   FAIL: 'FAIL',
 });
 
+const ANNOUNCEMENT_AUDIENCE = Object.freeze({
+  ALL: 'ALL',
+  TEACHERS: 'TEACHERS',
+  STUDENTS: 'STUDENTS',
+  PARENTS: 'PARENTS',
+  BATCH: 'BATCH',
+});
+
+const ANNOUNCEMENT_STATUS = Object.freeze({
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+});
+
 module.exports = {
   ROLES,
   INSTITUTE_STATUS,
@@ -98,4 +112,6 @@ module.exports = {
   PAYMENT_STATUS,
   TEST_STATUS,
   RESULT_STATUS,
+  ANNOUNCEMENT_AUDIENCE,
+  ANNOUNCEMENT_STATUS,
 };

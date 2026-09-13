@@ -64,31 +64,117 @@ async function markPresentOrReturnExisting(instituteId, { studentId, batchId, da
   }
 }
 
+const { notifyStudentAndParents } = require('../utils/portal-notify');
+
 // ---------------------------------------------------------------------
 // QR scan
 // ---------------------------------------------------------------------
 async function scanAttendance(instituteId, auth, { qrToken, batchId }) {
+  let token = qrToken.trim();
+  if (token.startsWith('LEAVE:')) {
+    throw new ValidationError('This is a leaving QR code, not an attendance QR code');
+  }
+  if (token.startsWith('ATTEND:')) {
+    token = token.replace('ATTEND:', '');
+  }
+
   // Look up by the opaque token first, then confirm tenant ownership -
   // the same generic error either way, so a token from another institute
   // never confirms whether it "exists" versus "isn't valid here".
-  const student = await prisma.student.findUnique({ where: { qrCode: qrToken } });
+  const student = await prisma.student.findUnique({
+    where: { qrCode: token },
+    include: { batch: true },
+  });
   if (!student || student.instituteId !== instituteId) {
     throw new ValidationError('Invalid student QR code');
   }
 
-  await findOwnedOrThrow(prisma.batch, batchId, instituteId, 'Batch not found');
-  await assertCanAccessBatch(instituteId, auth, batchId);
+  const effectiveBatchId = batchId || student.batchId;
+  if (!effectiveBatchId) {
+    throw new ValidationError('Student is not enrolled in any batch');
+  }
 
-  if (student.batchId !== batchId) {
+  await findOwnedOrThrow(prisma.batch, effectiveBatchId, instituteId, 'Batch not found');
+  await assertCanAccessBatch(instituteId, auth, effectiveBatchId);
+
+  if (student.batchId && student.batchId !== effectiveBatchId) {
     throw new ValidationError('Student is not enrolled in this batch');
   }
 
-  return markPresentOrReturnExisting(instituteId, {
+  const result = await markPresentOrReturnExisting(instituteId, {
     studentId: student.id,
-    batchId,
+    batchId: effectiveBatchId,
     date: today(),
     markedById: auth.userId,
   });
+
+  if (!result.alreadyMarked) {
+    notifyStudentAndParents(instituteId, student.id, {
+      type: 'ATTENDANCE',
+      title: 'Attendance Marked',
+      message: `${student.firstName} ${student.lastName} was marked PRESENT for today.`,
+      entityType: 'ATTENDANCE',
+      entityId: result.attendance.id,
+    }).catch(() => { });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------
+// Leaving QR scan
+// ---------------------------------------------------------------------
+async function scanLeaving(instituteId, auth, { qrToken }) {
+  let token = qrToken.trim();
+  if (token.startsWith('LEAVE:')) {
+    token = token.replace('LEAVE:', '');
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { qrCode: token },
+    include: { batch: true },
+  });
+  if (!student || student.instituteId !== instituteId) {
+    throw new ValidationError('Invalid student leaving QR code');
+  }
+
+  // Check if student checked in today
+  const attendanceToday = await prisma.attendance.findFirst({
+    where: {
+      instituteId,
+      studentId: student.id,
+      date: today(),
+      status: ATTENDANCE_STATUS.PRESENT,
+    },
+    include: { batch: true },
+  });
+
+  if (!attendanceToday) {
+    throw new ValidationError('Student has not checked in today');
+  }
+
+  const leavingTime = new Date();
+
+  notifyStudentAndParents(instituteId, student.id, {
+    type: 'LEAVING',
+    title: 'Leaving Recorded',
+    message: `${student.firstName} ${student.lastName} marked check-out at ${leavingTime.toLocaleTimeString()}.`,
+    entityType: 'ATTENDANCE',
+    entityId: attendanceToday.id,
+  }).catch(() => { });
+
+  return {
+    student: {
+      id: student.id,
+      studentCode: student.studentCode,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      fullName: `${student.firstName} ${student.lastName}`,
+      batch: student.batch ? { id: student.batch.id, name: student.batch.name } : null,
+    },
+    leavingTime,
+    message: 'Student check-out recorded successfully',
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -278,6 +364,7 @@ async function getBatchSummary(instituteId, auth, batchId, date) {
 
 module.exports = {
   scanAttendance,
+  scanLeaving,
   markManual,
   listAttendance,
   getStudentSummary,

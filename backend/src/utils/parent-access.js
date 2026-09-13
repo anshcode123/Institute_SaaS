@@ -2,7 +2,11 @@ const { prisma } = require('../config/prisma');
 const { ForbiddenError } = require('./app-error');
 
 async function getParentForUser(instituteId, userId) {
-  return prisma.parent.findFirst({ where: { instituteId: instituteId, userId: userId } });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.role !== 'PARENT') {
+    return null;
+  }
+  return prisma.parent.findFirst({ where: { instituteId: instituteId, email: user.email } });
 }
 
 // THE critical check for every parent-portal endpoint: a parent must

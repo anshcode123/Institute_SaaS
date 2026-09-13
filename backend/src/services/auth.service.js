@@ -102,4 +102,57 @@ async function teacherLogin({ email, password }) {
   return { user: toSafeUser(user), ...tokens };
 }
 
-module.exports = { superAdminLogin, instituteLogin, teacherLogin, toSafeUser };
+async function studentLogin({ email, password }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || user.role !== ROLES.STUDENT) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
+
+  const valid = await comparePassword(password, user.passwordHash);
+  if (!valid) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
+
+  if (user.instituteId) {
+    const institute = await prisma.institute.findUnique({ where: { id: user.instituteId } });
+    if (!institute || institute.status !== INSTITUTE_STATUS.ACTIVE) {
+      throw new ForbiddenError('This institute account is suspended');
+    }
+  }
+
+  const tokens = await issueTokenPair(user);
+  return { user: toSafeUser(user), ...tokens };
+}
+
+async function parentLogin({ email, password }) {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || user.role !== ROLES.PARENT) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
+
+  const valid = await comparePassword(password, user.passwordHash);
+  if (!valid) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
+
+  if (user.instituteId) {
+    const institute = await prisma.institute.findUnique({ where: { id: user.instituteId } });
+    if (!institute || institute.status !== INSTITUTE_STATUS.ACTIVE) {
+      throw new ForbiddenError('This institute account is suspended');
+    }
+  }
+
+  const tokens = await issueTokenPair(user);
+  return { user: toSafeUser(user), ...tokens };
+}
+
+module.exports = {
+  superAdminLogin,
+  instituteLogin,
+  teacherLogin,
+  studentLogin,
+  parentLogin,
+  toSafeUser,
+};

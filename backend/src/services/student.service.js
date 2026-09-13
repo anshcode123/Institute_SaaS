@@ -45,13 +45,13 @@ async function listStudents(instituteId, query) {
     ...(batchId ? { batchId } : {}),
     ...(q
       ? {
-          OR: [
-            { firstName: { contains: q, mode: 'insensitive' } },
-            { lastName: { contains: q, mode: 'insensitive' } },
-            { studentCode: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-          ],
-        }
+        OR: [
+          { firstName: { contains: q, mode: 'insensitive' } },
+          { lastName: { contains: q, mode: 'insensitive' } },
+          { studentCode: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      }
       : {}),
   };
 
@@ -69,10 +69,99 @@ async function listStudents(instituteId, query) {
   return { items, total, page, limit };
 }
 
+const { ROLES } = require('../constants/roles');
+const { ValidationError } = require('../utils/app-error');
+const { hashPassword, generateTempPassword } = require('../utils/password');
+
 async function getStudentById(instituteId, id) {
-  return findOwnedOrThrow(prisma.student, id, instituteId, 'Student not found', {
+  const student = await findOwnedOrThrow(prisma.student, id, instituteId, 'Student not found', {
     include: { batch: true, parents: { include: { parent: true } } },
   });
+
+  let hasLogin = false;
+  let loginEmail = null;
+  if (student.email) {
+    const user = await prisma.user.findFirst({
+      where: { instituteId, email: student.email, role: ROLES.STUDENT },
+      select: { id: true, email: true },
+    });
+    if (user) {
+      hasLogin = true;
+      loginEmail = user.email;
+    }
+  }
+
+  return { ...student, hasLogin, loginEmail };
+}
+
+async function createStudentLogin(instituteId, studentId, data = {}) {
+  const student = await findOwnedOrThrow(prisma.student, studentId, instituteId, 'Student not found');
+
+  const loginId = (data.loginId && data.loginId.trim()) || student.email || `${student.studentCode.toLowerCase()}@student.local`;
+  const plainPassword = (data.password && data.password.trim()) || generateTempPassword();
+  const passwordHash = await hashPassword(plainPassword);
+
+  // Check if student already has a login
+  if (student.email) {
+    const existing = await prisma.user.findFirst({
+      where: { instituteId, email: student.email, role: ROLES.STUDENT },
+    });
+    if (existing) {
+      throw new ConflictError('This student already has a login account');
+    }
+  }
+
+  try {
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          instituteId,
+          name: `${student.firstName} ${student.lastName}`,
+          email: loginId,
+          passwordHash,
+          role: ROLES.STUDENT,
+        },
+      });
+      // Ensure student's email matches the login email
+      if (student.email !== loginId) {
+        await tx.student.update({ where: { id: studentId }, data: { email: loginId } });
+      }
+      return created;
+    });
+
+    return { userId: user.id, email: user.email, initialPassword: plainPassword };
+  } catch (err) {
+    if (err.code === 'P2002') {
+      throw new ConflictError('A login with that email/ID already exists');
+    }
+    throw err;
+  }
+}
+
+async function resetStudentPassword(instituteId, studentId, data = {}) {
+  const student = await findOwnedOrThrow(prisma.student, studentId, instituteId, 'Student not found');
+
+  if (!student.email) {
+    throw new ValidationError('Student does not have an email/login account');
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { instituteId, email: student.email, role: ROLES.STUDENT },
+  });
+
+  if (!user) {
+    throw new ValidationError('No login account found for this student');
+  }
+
+  const newPlainPassword = (data.newPassword && data.newPassword.trim()) || generateTempPassword();
+  const passwordHash = await hashPassword(newPlainPassword);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  });
+
+  return { email: user.email, newPassword: newPlainPassword };
 }
 
 async function updateStudent(instituteId, id, data) {
@@ -147,4 +236,6 @@ module.exports = {
   linkParent,
   unlinkParent,
   assignBatch,
+  createStudentLogin,
+  resetStudentPassword,
 };

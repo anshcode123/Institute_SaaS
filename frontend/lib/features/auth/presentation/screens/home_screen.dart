@@ -61,8 +61,8 @@ class HomeScreen extends ConsumerWidget {
           ),
           _NavCard(
             icon: Icons.event_available_outlined,
-            label: 'Attendance History',
-            onTap: () => context.push('/attendance/history'),
+            label: 'Attendance',
+            onTap: () => context.push('/attendance'),
           ),
           _NavCard(
             icon: Icons.quiz_outlined,

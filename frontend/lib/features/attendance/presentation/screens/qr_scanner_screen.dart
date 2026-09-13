@@ -6,7 +6,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 /// caller (BatchAttendanceScreen) is responsible for sending it to the
 /// backend and re-opening the scanner for the next student.
 class QrScannerScreen extends StatefulWidget {
-  const QrScannerScreen({super.key});
+  const QrScannerScreen({super.key, this.title, this.prompt});
+
+  final String? title;
+  final String? prompt;
 
   @override
   State<QrScannerScreen> createState() => _QrScannerScreenState();
@@ -37,7 +40,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Student QR'),
+        title: Text(widget.title ?? 'Scan Student QR'),
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on),
@@ -65,9 +68,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                'Align the student QR code within the frame',
-                style: TextStyle(color: Colors.white),
+              child: Text(
+                widget.prompt ?? 'Align the student QR code within the frame',
+                style: const TextStyle(color: Colors.white),
               ),
             ),
           ),

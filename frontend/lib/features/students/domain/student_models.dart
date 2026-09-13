@@ -53,6 +53,8 @@ class Student {
   final Batch? batch;
   final List<ParentSummary> parents;
   final String? qrCode;
+  final bool hasLogin;
+  final String? loginEmail;
 
   const Student({
     required this.id,
@@ -70,6 +72,8 @@ class Student {
     this.batch,
     this.parents = const [],
     this.qrCode,
+    this.hasLogin = false,
+    this.loginEmail,
   });
 
   String get fullName => '$firstName $lastName';
@@ -81,20 +85,26 @@ class Student {
       firstName: json['firstName'] as String,
       lastName: json['lastName'] as String,
       profilePhoto: json['profilePhoto'] as String?,
-      dateOfBirth: json['dateOfBirth'] != null ? DateTime.parse(json['dateOfBirth'] as String) : null,
+      dateOfBirth: json['dateOfBirth'] != null
+          ? DateTime.parse(json['dateOfBirth'] as String)
+          : null,
       gender: json['gender'] as String?,
       phone: json['phone'] as String?,
       email: json['email'] as String?,
       address: json['address'] as String?,
       admissionDate: DateTime.parse(json['admissionDate'] as String),
       status: json['status'] as String,
-      batch: json['batch'] != null ? Batch.fromJson(json['batch'] as Map<String, dynamic>) : null,
+      batch: json['batch'] != null
+          ? Batch.fromJson(json['batch'] as Map<String, dynamic>)
+          : null,
       parents: json['parents'] != null
           ? (json['parents'] as List)
               .map((e) => ParentSummary.fromJson(e as Map<String, dynamic>))
               .toList()
           : const [],
       qrCode: json['qrCode'] as String?,
+      hasLogin: json['hasLogin'] as bool? ?? false,
+      loginEmail: json['loginEmail'] as String?,
     );
   }
 }

@@ -48,10 +48,21 @@ const assignBatchSchema = z.object({
   batchId: z.string().uuid('Invalid batch id'),
 });
 
+const createStudentLoginSchema = z.object({
+  loginId: z.string().min(1).optional(),
+  password: z.string().min(6).optional(),
+});
+
+const resetStudentPasswordSchema = z.object({
+  newPassword: z.string().min(6).optional(),
+});
+
 module.exports = {
   createStudentSchema,
   updateStudentSchema,
   listStudentsQuerySchema,
   linkParentSchema,
   assignBatchSchema,
+  createStudentLoginSchema,
+  resetStudentPasswordSchema,
 };

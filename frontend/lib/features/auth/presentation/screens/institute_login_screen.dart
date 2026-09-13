@@ -51,17 +51,27 @@ class InstituteLoginScreen extends ConsumerWidget {
                         instituteCode: instituteCode, password: password);
                   },
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     TextButton(
-                      onPressed: () => context.go('/super-admin/login'),
-                      child: const Text('Super Admin login'),
+                      onPressed: () => context.go('/teacher/login'),
+                      child: const Text('Teacher Login'),
                     ),
                     TextButton(
-                      onPressed: () => context.go('/teacher/login'),
-                      child: const Text('Teacher login'),
+                      onPressed: () => context.go('/student/login'),
+                      child: const Text('Student Login'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/parent/login'),
+                      child: const Text('Parent Login'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/super-admin/login'),
+                      child: const Text('Super Admin'),
                     ),
                   ],
                 ),

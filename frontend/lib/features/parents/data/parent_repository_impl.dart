@@ -9,7 +9,8 @@ class ParentRepositoryImpl implements ParentRepository {
   final Dio _dio = DioClient().dio;
 
   @override
-  Future<PaginatedResult<Parent>> list({String? query, String? status, int page = 1}) async {
+  Future<PaginatedResult<Parent>> list(
+      {String? query, String? status, int page = 1}) async {
     final data = await _get('/parents', queryParameters: {
       if (query != null && query.isNotEmpty) 'q': query,
       if (status != null) 'status': status,
@@ -19,7 +20,8 @@ class ParentRepositoryImpl implements ParentRepository {
   }
 
   @override
-  Future<Parent> getById(String id) async => Parent.fromJson(await _get('/parents/$id'));
+  Future<Parent> getById(String id) async =>
+      Parent.fromJson(await _get('/parents/$id'));
 
   @override
   Future<Parent> create(Map<String, dynamic> data) async =>
@@ -32,18 +34,40 @@ class ParentRepositoryImpl implements ParentRepository {
   @override
   Future<void> deactivate(String id) => _send('DELETE', '/parents/$id', null);
 
-  Future<Map<String, dynamic>> _get(String path, {Map<String, dynamic>? queryParameters}) async {
+  @override
+  Future<Map<String, dynamic>> createLogin(String parentId,
+      {String? loginId, String? password}) {
+    return _send('POST', '/parents/$parentId/login', {
+      if (loginId != null && loginId.isNotEmpty) 'loginId': loginId,
+      if (password != null && password.isNotEmpty) 'password': password,
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> resetPassword(String parentId,
+      {String? newPassword}) {
+    return _send('POST', '/parents/$parentId/login/reset-password', {
+      if (newPassword != null && newPassword.isNotEmpty)
+        'newPassword': newPassword,
+    });
+  }
+
+  Future<Map<String, dynamic>> _get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParameters);
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }
   }
 
-  Future<Map<String, dynamic>> _send(String method, String path, Map<String, dynamic>? body) async {
+  Future<Map<String, dynamic>> _send(
+      String method, String path, Map<String, dynamic>? body) async {
     try {
-      final response = await _dio.request(path, data: body, options: Options(method: method));
+      final response = await _dio.request(path,
+          data: body, options: Options(method: method));
       final data = (response.data as Map<String, dynamic>)['data'];
       return data is Map<String, dynamic> ? data : <String, dynamic>{};
     } on DioException catch (e) {

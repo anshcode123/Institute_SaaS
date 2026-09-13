@@ -72,4 +72,15 @@ router.use('/receipts', receiptsRouter);
 router.use('/tests', authenticate, authorize(ROLES.INSTITUTE_ADMIN, ROLES.TEACHER));
 router.use('/tests', testRoutes);
 
+// Phase 7: Student Portal, Parent Portal, Notifications, Announcements
+const studentPortalRoutes = require('./student-portal.routes');
+const parentPortalRoutes = require('./parent-portal.routes');
+const notificationRoutes = require('./notification.routes');
+const announcementRoutes = require('./announcement.routes');
+
+router.use('/student', authenticate, authorize(ROLES.STUDENT), studentPortalRoutes);
+router.use('/parent', authenticate, authorize(ROLES.PARENT), parentPortalRoutes);
+router.use('/notifications', authenticate, notificationRoutes);
+router.use('/announcements', authenticate, announcementRoutes);
+
 module.exports = router;

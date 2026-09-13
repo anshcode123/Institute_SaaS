@@ -2,7 +2,9 @@ import '../../../core/network/paginated_result.dart';
 import 'attendance_models.dart';
 
 abstract class AttendanceRepository {
-  Future<ScanResult> scan({required String qrToken, required String batchId});
+  Future<ScanResult> scan({required String qrToken, String? batchId});
+
+  Future<Map<String, dynamic>> scanLeaving({required String qrToken});
 
   Future<List<AttendanceRecord>> markManual({
     required String batchId,

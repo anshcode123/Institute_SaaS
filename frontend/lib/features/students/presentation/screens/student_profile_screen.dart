@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../../shared/widgets/currency_text.dart';
 import '../../../../shared/widgets/error_state.dart';
@@ -12,7 +13,6 @@ import '../../../fees/presentation/widgets/fee_status_chip.dart';
 import '../../../tests/presentation/providers/test_providers.dart';
 import '../../domain/student_models.dart';
 import '../providers/student_providers.dart';
-import 'student_qr_screen.dart';
 
 class StudentProfileScreen extends ConsumerWidget {
   const StudentProfileScreen({super.key, required this.studentId});
@@ -117,31 +117,43 @@ class _ProfileBody extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         Card(
-          child: ListTile(
-            leading: const Icon(Icons.qr_code_2),
-            title: const Text('Student QR Code'),
-            subtitle: const Text('Tap to view and enlarge'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: student.qrCode == null
-                ? null
-                : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StudentQrScreen(
-                          qrCode: student.qrCode!,
-                          studentName: student.fullName,
-                          studentCode: student.studentCode,
-                        ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Login Account',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        student.hasLogin
+                            ? 'Student can sign in (${student.loginEmail ?? student.email})'
+                            : 'Enable portal access for this student',
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+                if (!student.hasLogin)
+                  FilledButton(
+                    onPressed: () => _createLogin(context, ref),
+                    child: const Text('Create Login'),
+                  )
+                else
+                  OutlinedButton(
+                    onPressed: () => _resetPassword(context, ref),
+                    child: const Text('Reset Password'),
+                  ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
         _AttendanceSummaryCard(studentId: studentId),
         const SizedBox(height: 12),
-        // Reserved areas for future phases - deliberately not implemented
-        // yet, kept visible so the layout doesn't need to be redesigned
-        // when Fees/Tests/Results land.
         _StudentFeesCard(studentId: studentId),
         const SizedBox(height: 12),
         _StudentTestsCard(studentId: studentId),
@@ -169,6 +181,174 @@ class _ProfileBody extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _createLogin(BuildContext context, WidgetRef ref) async {
+    final loginIdController = TextEditingController(text: student.email ?? '');
+    final passwordController = TextEditingController();
+
+    final shouldCreate = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Student Login'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: loginIdController,
+              decoration: const InputDecoration(
+                labelText: 'Login ID / Email',
+                hintText: 'student@example.com',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(
+                labelText: 'Password (leave blank to auto-generate)',
+              ),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldCreate != true || !context.mounted) return;
+
+    try {
+      final result = await ref.read(studentRepositoryProvider).createLogin(
+            studentId,
+            loginId: loginIdController.text.trim().isEmpty
+                ? null
+                : loginIdController.text.trim(),
+            password: passwordController.text.trim().isEmpty
+                ? null
+                : passwordController.text.trim(),
+          );
+      ref.invalidate(studentDetailProvider(studentId));
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Created'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'Save these credentials now - the password will not be shown again.'),
+              const SizedBox(height: 16),
+              SelectableText('Login ID / Email: ${result['email']}'),
+              const SizedBox(height: 4),
+              SelectableText('Password: ${result['initialPassword']}'),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text(e is AppException ? e.message : 'Failed to create login')),
+      );
+    }
+  }
+
+  Future<void> _resetPassword(BuildContext context, WidgetRef ref) async {
+    final passwordController = TextEditingController();
+
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Student Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(
+                labelText: 'New Password (leave blank to auto-generate)',
+              ),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldReset != true || !context.mounted) return;
+
+    try {
+      final result = await ref.read(studentRepositoryProvider).resetPassword(
+            studentId,
+            newPassword: passwordController.text.trim().isEmpty
+                ? null
+                : passwordController.text.trim(),
+          );
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Password Reset'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('New credentials for student:'),
+              const SizedBox(height: 16),
+              SelectableText('Login ID / Email: ${result['email']}'),
+              const SizedBox(height: 4),
+              SelectableText('New Password: ${result['newPassword']}'),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                e is AppException ? e.message : 'Failed to reset password')),
+      );
+    }
   }
 }
 

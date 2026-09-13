@@ -46,7 +46,8 @@ class StudentRepositoryImpl implements StudentRepository {
   Future<void> deactivate(String id) => _send('DELETE', '/students/$id', null);
 
   @override
-  Future<void> linkParent(String studentId, String parentId, {String? relationship}) {
+  Future<void> linkParent(String studentId, String parentId,
+      {String? relationship}) {
     return _send('POST', '/students/$studentId/parent', {
       'parentId': parentId,
       if (relationship != null) 'relationship': relationship,
@@ -60,20 +61,42 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<Student> assignBatch(String studentId, String batchId) async {
-    final result = await _send('POST', '/students/$studentId/batch', {'batchId': batchId});
+    final result =
+        await _send('POST', '/students/$studentId/batch', {'batchId': batchId});
     return Student.fromJson(result);
   }
 
-  Future<Map<String, dynamic>> _get(String path, {Map<String, dynamic>? queryParameters}) async {
+  @override
+  Future<Map<String, dynamic>> createLogin(String studentId,
+      {String? loginId, String? password}) {
+    return _send('POST', '/students/$studentId/login', {
+      if (loginId != null && loginId.isNotEmpty) 'loginId': loginId,
+      if (password != null && password.isNotEmpty) 'password': password,
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> resetPassword(String studentId,
+      {String? newPassword}) {
+    return _send('POST', '/students/$studentId/login/reset-password', {
+      if (newPassword != null && newPassword.isNotEmpty)
+        'newPassword': newPassword,
+    });
+  }
+
+  Future<Map<String, dynamic>> _get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
       final response = await _dio.get(path, queryParameters: queryParameters);
-      return (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+      return (response.data as Map<String, dynamic>)['data']
+          as Map<String, dynamic>;
     } on DioException catch (e) {
       throw _toAppException(e);
     }
   }
 
-  Future<Map<String, dynamic>> _send(String method, String path, Map<String, dynamic>? body) async {
+  Future<Map<String, dynamic>> _send(
+      String method, String path, Map<String, dynamic>? body) async {
     try {
       final response = await _dio.request(
         path,

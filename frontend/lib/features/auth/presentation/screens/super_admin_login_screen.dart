@@ -43,10 +43,29 @@ class SuperAdminLoginScreen extends ConsumerWidget {
                         .loginSuperAdmin(email: email, password: password);
                   },
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => context.go('/'),
-                  child: const Text('Back to Institute login'),
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton(
+                      onPressed: () => context.go('/'),
+                      child: const Text('Institute Login'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/teacher/login'),
+                      child: const Text('Teacher Login'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/student/login'),
+                      child: const Text('Student Login'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/parent/login'),
+                      child: const Text('Parent Login'),
+                    ),
+                  ],
                 ),
               ],
             ),

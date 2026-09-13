@@ -8,6 +8,11 @@ const scan = asyncHandler(async (req, res) => {
   sendSuccess(res, result, message, result.alreadyMarked ? 200 : 201);
 });
 
+const scanLeaving = asyncHandler(async (req, res) => {
+  const result = await attendanceService.scanLeaving(req.auth.instituteId, req.auth, req.body);
+  sendSuccess(res, result, result.message || 'Leaving recorded');
+});
+
 const markManual = asyncHandler(async (req, res) => {
   const records = await attendanceService.markManual(req.auth.instituteId, req.auth, req.body);
   sendSuccess(res, records, 'Attendance updated');
@@ -41,4 +46,4 @@ const getBatchSummary = asyncHandler(async (req, res) => {
   sendSuccess(res, summary, 'Batch attendance summary retrieved');
 });
 
-module.exports = { scan, markManual, listAttendance, getStudentSummary, getBatchSummary };
+module.exports = { scan, scanLeaving, markManual, listAttendance, getStudentSummary, getBatchSummary };

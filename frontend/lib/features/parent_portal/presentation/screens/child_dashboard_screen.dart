@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../shared/widgets/currency_text.dart';
-import '../../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/currency_text.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../providers/parent_portal_providers.dart';
 
 /// Everything on this screen and everything it links to is scoped to
@@ -56,7 +56,8 @@ class ChildDashboardScreen extends ConsumerWidget {
                     const Text('Outstanding Fees'),
                     Text(
                       formatCurrency(dashboard.feesSummary.outstandingAmount),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.orange),
                     ),
                   ],
                 ),
@@ -75,7 +76,9 @@ class ChildDashboardScreen extends ConsumerWidget {
                         '${dashboard.latestResult!.percentage}% • ${dashboard.latestResult!.grade} • ${dashboard.latestResult!.status}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: dashboard.latestResult!.status == 'PASS' ? Colors.green : Colors.red,
+                          color: dashboard.latestResult!.status == 'PASS'
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
                     ],
@@ -87,7 +90,8 @@ class ChildDashboardScreen extends ConsumerWidget {
             _NavTile(
               icon: Icons.event_available_outlined,
               label: 'Attendance',
-              onTap: () => context.push('/parent/children/$studentId/attendance'),
+              onTap: () =>
+                  context.push('/parent/children/$studentId/attendance'),
             ),
             _NavTile(
               icon: Icons.account_balance_wallet_outlined,
@@ -102,7 +106,8 @@ class ChildDashboardScreen extends ConsumerWidget {
             _NavTile(
               icon: Icons.campaign_outlined,
               label: 'Announcements',
-              onTap: () => context.push('/parent/children/$studentId/announcements'),
+              onTap: () =>
+                  context.push('/parent/children/$studentId/announcements'),
             ),
           ],
         ),
@@ -112,7 +117,8 @@ class ChildDashboardScreen extends ConsumerWidget {
 }
 
 class _NavTile extends StatelessWidget {
-  const _NavTile({required this.icon, required this.label, required this.onTap});
+  const _NavTile(
+      {required this.icon, required this.label, required this.onTap});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -121,7 +127,11 @@ class _NavTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(leading: Icon(icon), title: Text(label), trailing: const Icon(Icons.chevron_right), onTap: onTap),
+      child: ListTile(
+          leading: Icon(icon),
+          title: Text(label),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onTap),
     );
   }
 }

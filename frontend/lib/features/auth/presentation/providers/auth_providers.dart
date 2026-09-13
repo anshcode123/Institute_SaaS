@@ -65,6 +65,30 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> loginStudent(
+      {required String email, required String password}) async {
+    state = const AuthState.loading();
+    try {
+      final session =
+          await _repository.loginStudent(email: email, password: password);
+      state = AuthState.authenticated(session.user);
+    } catch (e) {
+      state = AuthState.error(_messageOf(e));
+    }
+  }
+
+  Future<void> loginParent(
+      {required String email, required String password}) async {
+    state = const AuthState.loading();
+    try {
+      final session =
+          await _repository.loginParent(email: email, password: password);
+      state = AuthState.authenticated(session.user);
+    } catch (e) {
+      state = AuthState.error(_messageOf(e));
+    }
+  }
+
   Future<void> logout() async {
     await _repository.logout();
     state = const AuthState.unauthenticated();

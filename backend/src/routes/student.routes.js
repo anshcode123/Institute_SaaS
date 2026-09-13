@@ -6,6 +6,8 @@ const {
   listStudentsQuerySchema,
   linkParentSchema,
   assignBatchSchema,
+  createStudentLoginSchema,
+  resetStudentPasswordSchema,
 } = require('../validators/student.validators');
 const {
   createStudent,
@@ -16,6 +18,8 @@ const {
   linkParent,
   unlinkParent,
   assignBatch,
+  createLogin,
+  resetPassword,
 } = require('../controllers/student.controller');
 
 const router = Router();
@@ -25,6 +29,9 @@ router.get('/', validateQuery(listStudentsQuerySchema), listStudents);
 router.get('/:id', getStudent);
 router.patch('/:id', validateBody(updateStudentSchema), updateStudent);
 router.delete('/:id', deactivateStudent);
+
+router.post('/:id/login', validateBody(createStudentLoginSchema), createLogin);
+router.post('/:id/login/reset-password', validateBody(resetStudentPasswordSchema), resetPassword);
 
 router.post('/:studentId/parent', validateBody(linkParentSchema), linkParent);
 router.delete('/:studentId/parent/:parentId', unlinkParent);

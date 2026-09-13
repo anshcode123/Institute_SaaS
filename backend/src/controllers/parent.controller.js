@@ -27,4 +27,30 @@ const deactivateParent = asyncHandler(async (req, res) => {
   sendSuccess(res, parent, 'Parent deactivated');
 });
 
-module.exports = { createParent, listParents, getParent, updateParent, deactivateParent };
+const createLogin = asyncHandler(async (req, res) => {
+  const result = await parentService.createParentLogin(
+    req.auth.instituteId,
+    req.params.id,
+    req.body || {},
+  );
+  sendSuccess(res, result, 'Parent login account created', 201);
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const result = await parentService.resetParentPassword(
+    req.auth.instituteId,
+    req.params.id,
+    req.body || {},
+  );
+  sendSuccess(res, result, 'Parent password reset successfully');
+});
+
+module.exports = {
+  createParent,
+  listParents,
+  getParent,
+  updateParent,
+  deactivateParent,
+  createLogin,
+  resetPassword,
+};
