@@ -5,5 +5,5 @@ class AppConstants {
 
   // Base URL for the backend API. Swap per environment later
   // (e.g. via --dart-define or flavors) once auth/env handling is added.
-  static const String apiBaseUrl = 'http://localhost:4000/api';
+  static const String apiBaseUrl = 'https://institute-saas.onrender.com/api';
 }
