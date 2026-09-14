@@ -16,6 +16,8 @@ dependencies:
   # Routing
   go_router: ^14.2.0
 
+  firebase_core:
+
   # Networking
   dio: ^5.5.0
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "493000125330",
+    "project_id": "institute-saas",
+    "storage_bucket": "institute-saas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:493000125330:android:8b9eef8bbbd7fb24686f4b",
+        "android_client_info": {
+          "package_name": "com.example.student_saas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyab9NRuuZCFn_NI4zoibjl2nJBBhB9iY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

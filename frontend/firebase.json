@@ -1,0 +1,37 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "institute-saas",
+          "appId": "1:493000125330:android:8b9eef8bbbd7fb24686f4b",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "institute-saas",
+          "configurations": {
+            "android": "1:493000125330:android:8b9eef8bbbd7fb24686f4b",
+            "web": "1:493000125330:web:dec1c289bbdd4e75686f4b",
+            "windows": "1:493000125330:web:0da440f84ca33a3a686f4b"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
